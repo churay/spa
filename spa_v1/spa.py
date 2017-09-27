@@ -23,8 +23,8 @@ def main():
 
     ## Identify Connected Components ##
 
-    # TODO(JRC): Refactor the following section so that it's easier to read.
-    # TODO(JRC): Add status statements like the 'dmtg' project to make the wait bearable.
+    # TODO(JRC): Add caching for the component data so that the turnaround
+    # time for generating the full animation is improved.
 
     visited_pixels = {}
     pending_pixels = list(
@@ -32,38 +32,39 @@ def main():
         for y in range(silhouette_image.height)
         if silhouette_image.getpixel((x, y))[3] != 0)
 
-    component_lists = []
+    components = []
     while pending_pixels:
         pending_pixel, pending_comp = pending_pixels.pop()
         pending_alpha = silhouette_image.getpixel(pending_pixel)[3]
 
         if pending_alpha != 0 and pending_pixel not in visited_pixels:
             if pending_comp == -1:
-                pending_comp = len(component_lists)
-                component_lists.append([])
+                pending_comp = len(components)
+                components.append([])
 
-            component_list = component_lists[pending_comp]
-            component_list.append(pending_pixel)
+            component = component[pending_comp]
+            component.append(pending_pixel)
             visited_pixels[pending_pixel] = pending_comp
 
             px, py = pending_pixel
             pending_pixels.extend(((px+dx, py+dy), pending_comp) for dx in range(-1, 2) for dy in range(-1, 2))
 
+    # TODO(JRC): Identify the boundary pixels in each of the components;
+    # each component will have a maximum of two boundaries.
+
+    '''
     color_list = [
         (255, 0, 0, 255), (255, 127, 0, 255), (255, 255, 0, 255),
         (0, 255, 0, 255), (0, 0, 255, 255), (75, 0, 130, 255),
         (148, 0, 211, 255)]
 
-    # TODO(JRC): Figure out a better way to combine these small pockets of
-    # connected components with larger nearby components.
-    #component_lists = [cl for cl in component_lists if len(cl) > 20]
-
-    for component_idx, component_list in enumerate(component_lists):
+    for component_idx, component in enumerate(components):
         component_color = color_list[min(component_idx, len(color_list)-1)]
-        for component_pixel in component_list:
+        for component_pixel in component:
             base_image.putpixel(component_pixel, component_color)
 
     base_image.save(os.path.join(output_dir, 'test.png'))
+    '''
 
 ### Miscellaneous ###
 
