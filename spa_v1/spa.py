@@ -3,6 +3,7 @@
 __doc__ = '''Module for "SPA" Console Application'''
 
 import os, optparse
+import spa
 from PIL import Image
 
 ### Main Entry Point ###
@@ -14,7 +15,7 @@ def main():
     input_dir = os.path.join(base_dir, 'img')
     output_dir = os.path.join(base_dir, 'out')
 
-    silhouette_image = Image.open(os.path.join(input_dir, 'basic.png')) #'silhouette.png'))
+    silhouette_image = Image.open(os.path.join(input_dir, 'silhouette.png'))
     #overlay_image = Image.open(os.path.join(input_dir, 'overlay.png'))
 
     # TODO(JRC): Scale this image based on the scaling factor that will
@@ -28,40 +29,40 @@ def main():
     # TODO(JRC): Add caching capabilities to the calc functions so that an
     # image can have its path data trivially saved and loaded for quicker
     # turnaround times on recomputation.
+    # TODO(JRC): When stroking the boundaries for all of the silhouettes, use
+    # graph distance instead of pixel distance for the fill to prevent artifacting
+    # on some silhouettes (e.g. the e).
 
-    def is_empty(pixel, image):
-        return image.getpixel(pixel)[3] == 0
+    def to_1d(px, py, img): return px + py * img.width
+    def to_2d(pi, img):     return (int(pi % img.width), int(pi / img.width))
 
-    def calc_adjacent(pixel, image, only_nonempty):
-        px, py = pixel
+    def calc_adjacent(pixel, image):
+        px, py = to_2d(pixel, image)
         return [
-            (px+dx, py+dy) for dx in range(-1, 2) for dy in range(-1, 2)
-            if 0 <= px+dx < image.width and 0 <= py+dy < image.height and dx+dy != 0
-            and not (only_nonempty and is_empty((px+dx,py+dy), image))]
+            to_1d(px+dx, py+dy, image) for dx in range(-1, 2) for dy in range(-1, 2)
+            if 0 <= px+dx < image.width and 0 <= py+dy < image.height
+            and to_1d(px+dx, py+dy, image) != pixel]
 
-    def calc_components(image):
-        components = []
+    # NOTE(JRC): Modify this function to redefine what it means for adjacent
+    # pixels in a given image to be members of different components.
+    def is_component_boundary(curr_pixel, next_pixel, image):
+        curr_alpha = image.getpixel(to_2d(curr_pixel, image))[3]
+        next_alpha = image.getpixel(to_2d(next_pixel, image))[3]
+        return curr_alpha * next_alpha == 0 and curr_alpha + next_alpha != 0
 
-        visited_pixels = {}
-        pending_pixels = [((x, y),-1) for y in range(image.height) for x in range(image.width)]
-        while pending_pixels:
-            pending_pixel, pending_comp = pending_pixels.pop()
+    def calc_components(image, is_boundary=is_component_boundary):
+        pixel_count = image.width * image.height
+        component_dsets = spa.dsets(pixel_count)
 
-            if pending_pixel not in visited_pixels and not is_empty(pending_pixel, image):
-                # NOTE(JRC): If this pixel doesn't have a component yet, then
-                # this it's the first pixel in a new component.
-                if pending_comp == -1:
-                    pending_comp = len(components)
-                    components.append([])
+        for curr_pixel in range(pixel_count):
+            spa.display_status('pixel', curr_pixel, pixel_count)
+            adj_pixels = calc_adjacent(curr_pixel, image)
 
-                component = components[pending_comp]
-                component.append(pending_pixel)
-                visited_pixels[pending_pixel] = pending_comp
+            for adj_pixel in adj_pixels:
+                if not is_boundary(curr_pixel, adj_pixel, image):
+                    component_dsets.union(curr_pixel, adj_pixel)
 
-                adjacent_pixels = calc_adjacent(pending_pixel, image, False)
-                pending_pixels.extend(zip(adjacent_pixels, [pending_comp]*8))
-
-        return components
+        return component_dsets.tabulate().values()
 
     # TODO(JRC): Fix a bug in the boundary calculation function that prevents
     # a singular path from being formed due to eager assignment of parents and
@@ -73,41 +74,10 @@ def main():
     # is adjacent to the first value and each subsequent value is adjacent and
     # exactly one value away).
     def calc_boundaries(component, image):
-        boundaries = []
-
-        # TODO(JRC): We're currently only locating the outer boundary and ignoring
-        # the inner (important for the o and the n).
-        visited_steps, visited_parents = {}, {component[0]: None}
-        pending_pixels = [(component[0], 0)]
-        while pending_pixels:
-            pending_pixel, pending_steps = pending_pixels.pop()
-            adjacent_all = calc_adjacent(pending_pixel, image, False)
-
-            if (any(is_empty(ap, image) for ap in adjacent_all) and
-                    pending_steps < visited_steps.get(pending_pixel, float('inf'))):
-                adjacent_pixels = calc_adjacent(pending_pixel, image, True)
-                pending_pixels.extend(zip(adjacent_pixels, [pending_steps+1]*8))
-
-                visited_steps[pending_pixel] = pending_steps
-                for adjacent_pixel in adjacent_pixels:
-                    visited_parents.setdefault(adjacent_pixel, pending_pixel)
-
-        start_pixel = component[0]
-        end_pixels = calc_adjacent(start_pixel, image, True)
-        end_pixel = next(iter(sorted(end_pixels, reverse=True, key=lambda s: (
-            visited_steps.get(s, -float('inf')),
-            len([ap for ap in calc_adjacent(s, image, False) if is_empty(ap, image)]),
-        ))), start_pixel)
-
-        curr_pixel = end_pixel
-        while curr_pixel:
-            boundaries.append(curr_pixel)
-            curr_pixel = visited_parents.get(curr_pixel, None)
-
-        return boundaries
+        return []
 
     silhouette_components = calc_components(silhouette_image)
-    silhouette_boundaries = [calc_boundaries(silhouette_components[0], silhouette_image)]
+    #silhouette_boundaries = [calc_boundaries(silhouette_components[0], silhouette_image)]
     # silhouette_boundaries = [calc_boundaries(sc, silhouette_image) for sc in silhouette_components]
 
     color_list = [
@@ -115,17 +85,17 @@ def main():
         (0, 255, 0, 255), (0, 0, 255, 255), (75, 0, 130, 255),
         (148, 0, 211, 255)]
 
+    '''
     for boundary_idx, boundary in enumerate(silhouette_boundaries):
         boundary_color = color_list[min(boundary_idx, len(color_list)-1)]
         for boundary_pixel in boundary:
             base_image.putpixel(boundary_pixel, boundary_color)
-
     '''
+
     for component_idx, component in enumerate(silhouette_components):
         component_color = color_list[min(component_idx, len(color_list)-1)]
         for component_pixel in component:
-            base_image.putpixel(component_pixel, component_color)
-    '''
+            base_image.putpixel(to_2d(component_pixel, base_image), component_color)
 
     base_image.save(os.path.join(output_dir, 'test.png'))
 

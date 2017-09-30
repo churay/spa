@@ -21,12 +21,13 @@ class dsets():
         dset1, dset2 = tuple(self.find(d) for d in (dset1, dset2))
         dsize1, dsize2 = tuple(self._dsets[d] for d in (dset1, dset2))
 
-        if abs(dsize1) >= abs(dsize2):
-            self._dsets[dset1] = dsize1 + dsize2
-            self._dsets[dset2] = dset1
-        else:
-            self._dsets[dset1] = dset2
-            self._dsets[dset2] = dsize1 + dsize2
+        if dset1 != dset2:
+            if abs(dsize1) >= abs(dsize2):
+                self._dsets[dset1] = dsize1 + dsize2
+                self._dsets[dset2] = dset1
+            else:
+                self._dsets[dset1] = dset2
+                self._dsets[dset2] = dsize1 + dsize2
 
     def find(self, dset):
         if self._is_delegate(dset):

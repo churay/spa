@@ -6,6 +6,7 @@ PYTHON_FLAGS =
 ### Project Files and Directories ###
 
 PROJ_DIR = .
+SRC_DIR = $(PROJ_DIR)/spa
 IN_DIR = $(PROJ_DIR)/img
 OUT_DIR = $(PROJ_DIR)/out
 
@@ -24,4 +25,4 @@ $(OUT_DIR) :
 	mkdir $@
 
 clean :
-	rm -rf $(PROJ_DIR)/*.pyc $(OUT_DIR)
+	rm -rf $(PROJ_DIR)/*.pyc $()/*.pyc $(OUT_DIR)
