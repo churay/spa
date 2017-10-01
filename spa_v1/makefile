@@ -25,4 +25,4 @@ $(OUT_DIR) :
 	mkdir $@
 
 clean :
-	rm -rf $(PROJ_DIR)/*.pyc $()/*.pyc $(OUT_DIR)
+	rm -rf $(PROJ_DIR)/*.pyc $(SRC_DIR)/*.pyc $(OUT_DIR)

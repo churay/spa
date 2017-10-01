@@ -2,7 +2,7 @@
 
 __doc__ = '''Module for "SPA" Console Application'''
 
-import os, optparse
+import os, optparse, collections, colorsys
 import spa
 from PIL import Image
 
@@ -12,26 +12,15 @@ def main():
     ## Program Constants ##
 
     base_dir = os.path.dirname(os.path.realpath(__file__))
-    input_dir = os.path.join(base_dir, 'img')
+    input_dir = os.path.join(base_dir, 'in')
     output_dir = os.path.join(base_dir, 'out')
 
-    silhouette_image = Image.open(os.path.join(input_dir, 'silhouette.png'))#'test.png'))
-    #overlay_image = Image.open(os.path.join(input_dir, 'overlay.png'))
+    # TODO(JRC): This code currently assumes that the default boundary calculation
+    # function was used when performing caching. This will need to be changed if more
+    # schemes are ever introduced.
+    use_caching = True
 
-    # TODO(JRC): Scale this image based on the scaling factor that will
-    # be used for the pop effect.
-    base_image = Image.new('RGBA', silhouette_image.size, color=(255, 255, 255, 255))
-
-    ## Identify Connected Components ##
-
-    # TODO(JRC): Generalize this code so that it isn't reliant on full alpha
-    # pixels to define boundaries between image components.
-    # TODO(JRC): Add caching capabilities to the calc functions so that an
-    # image can have its path data trivially saved and loaded for quicker
-    # turnaround times on recomputation.
-    # TODO(JRC): When stroking the boundaries for all of the silhouettes, use
-    # graph distance instead of pixel distance for the fill to prevent artifacting
-    # on some silhouettes (e.g. the e).
+    ## Factored Functionality ##
 
     def to_1d(px, py, img): return px + py * img.width
     def to_2d(pi, img):     return (int(pi % img.width), int(pi / img.width))
@@ -53,7 +42,30 @@ def main():
         next_alpha = image.getpixel(to_2d(next_pixel, image))[3]
         return curr_alpha * next_alpha == 0 and curr_alpha + next_alpha != 0
 
+    # TODO(JRC): Consider cleaning up all of this caching code by introducing
+    # a decorator that wraps each function and allows custom saving behavior
+    # to be defined.
+    def get_cache_path(image, cache_type):
+        image_filename = os.path.basename(image.filename)
+        image_name, image_ext = os.path.splitext(image_filename)
+        return os.path.join(output_dir,
+            '{0}_{1}{2}'.format(image_name, cache_type, image_ext))
+
+    def distrib_colors(count):
+        hues = [(1.0/count)*i for i in range(count)]
+        rgbs = [colorsys.hsv_to_rgb(h, 1.0, 1.0) for h in hues]
+        return [tuple(int(cc*255) for cc in c) for c in rgbs]
+
     def calc_components(image, is_valid=is_opaque, is_boundary=is_component_boundary):
+        if use_caching and os.path.isfile(get_cache_path(image, 'comps')):
+            cache_image = Image.open(get_cache_path(image, 'comps'))
+            components = collections.defaultdict(list)
+            for pixel in range(cache_image.width * cache_image.height):
+                if is_opaque(pixel, cache_image):
+                    color = cache_image.getpixel(to_2d(pixel, cache_image))
+                    components[color].append(pixel)
+            return components.values()
+
         components = []
 
         visited_pixels = set()
@@ -75,24 +87,21 @@ def main():
 
                 components.append(component)
 
+        if use_caching:
+            cache_image = Image.new('RGBA', image.size, color=(0, 0, 0, 0))
+            component_colors = distrib_colors(len(components))
+            for component, color in zip(components, component_colors):
+                for pixel in component:
+                    cache_image.putpixel(to_2d(pixel, cache_image), color)
+            cache_image.save(get_cache_path(image, 'comps'))
+
         return components
 
-    # TODO(JRC): Fix a bug in the boundary calculation function that prevents
-    # a singular path from being formed due to eager assignment of parents and
-    # step counts (preemptively searched in both directions before taking a path,
-    # which wouldn't happen in a strictly DFS).
-
-    # TODO(JRC): Return the boundaries as multiple lists where each list contains
-    # an ordered sequence of pixels that constitutes a full path (the last value
-    # is adjacent to the first value and each subsequent value is adjacent and
-    # exactly one value away).
     def calc_boundaries(component, image, is_boundary=is_component_boundary):
-        # TODO(JRC): First things first: find all boundary pixels (have at least
-        # one adjacent pixel that constitutes a boundary), then perform a graph
-        # traversal on this list to find the connected components.
-        # TODO(JRC): Within each of these connected components, we must find the
-        # maximum acyclic path from a pixel to itself traversing only the boundary
-        # nodes.
+        cached_image = load_cached(image, 'bounds')
+        if cached_image:
+            pass
+
         boundaries = []
 
         boundary_pixels = set(cp for cp in component if
@@ -117,28 +126,36 @@ def main():
 
         return boundaries
 
-    silhouette_components = calc_components(silhouette_image)
-    # silhouette_boundaries = [calc_boundaries(silhouette_components[0], silhouette_image)]
-    silhouette_boundaries = [calc_boundaries(sc, silhouette_image) for sc in silhouette_components]
+    # TODO(JRC): When stroking the boundaries for all of the silhouettes, use
+    # graph distance instead of pixel distance for the fill to prevent artifacting
+    # on some silhouettes (e.g. the e).
+    def calc_strokes():
+        pass
 
-    color_list = [
-        (255, 0, 0, 255), (255, 127, 0, 255), (255, 255, 0, 255),
-        (0, 255, 0, 255), (0, 0, 255, 255), (75, 0, 130, 255), (148, 0, 211, 255)]
+    ## Script Processing ##
 
-    for boundary_idx, boundaries in enumerate(silhouette_boundaries):
-        boundary_color = color_list[min(boundary_idx, len(color_list)-1)]
+    base_image = Image.open(os.path.join(input_dir, 'silhouette.png'))
+    over_image = Image.open(os.path.join(input_dir, 'overlay.png'))
+    # TODO(JRC): Scale this image based on the scaling factor that will
+    # be used for the pop effect.
+    out_image = Image.new('RGBA', base_image.size, color=(255, 255, 255, 255))
+
+    base_components = calc_components(base_image)
+    #base_boundaries = [calc_boundaries(bc, base_image) for bc in base_components]
+    base_colors = distrib_colors(len(base_components))
+
+    for component, color in zip(base_components, base_colors):
+        for component_pixel in component:
+            out_image.putpixel(to_2d(component_pixel, out_image), color)
+
+    '''
+    for boundaries, color in zip(base_boundaries, base_colors):
         for boundary in boundaries:
             for boundary_pixel in boundary:
-                base_image.putpixel(to_2d(boundary_pixel, base_image), boundary_color)
-
-    '''
-    for component_idx, component in enumerate(silhouette_components):
-        component_color = color_list[min(component_idx, len(color_list)-1)]
-        for component_pixel in component:
-            base_image.putpixel(to_2d(component_pixel, base_image), component_color)
+                out_image.putpixel(to_2d(boundary_pixel, out_image), color)
     '''
 
-    base_image.save(os.path.join(output_dir, 'test.png'))
+    out_image.save(os.path.join(output_dir, 'test.png'))
 
 ### Miscellaneous ###
 
