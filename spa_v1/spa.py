@@ -97,32 +97,54 @@ def main():
 
         return components
 
-    def calc_boundaries(component, image, is_boundary=is_component_boundary):
-        cached_image = load_cached(image, 'bounds')
-        if cached_image:
-            pass
+    def calc_boundaries(image, components, is_boundary=is_component_boundary):
+        if use_caching and os.path.isfile(get_cache_path(image, 'bounds')):
+            cache_image = Image.open(get_cache_path(image, 'bounds'))
+            boundaries = collections.defaultdict(lambda: collections.defaultdict(list))
+            for pixel in range(cache_image.width * cache_image.height):
+                if is_opaque(pixel, cache_image):
+                    color = cache_image.getpixel(to_2d(pixel, cache_image))
+                    boundaries[color[:3]][color[3]].append(pixel)
+            return [b.values() for b in boundaries.values()]
 
         boundaries = []
 
-        boundary_pixels = set(cp for cp in component if
-            any(is_boundary(cp, ap, image) for ap in calc_adjacent(cp, image)))
+        for component in components:
+            boundary_list = []
+            boundary_pixels = set(cp for cp in component if
+                any(is_boundary(cp, ap, image) for ap in calc_adjacent(cp, image)))
 
-        visited_pixels = set()
-        for bound_pixel in boundary_pixels:
-            if bound_pixel not in visited_pixels:
-                boundary = []
+            visited_pixels = set()
+            for bound_pixel in boundary_pixels:
+                if bound_pixel not in visited_pixels:
+                    boundary = []
 
-                pending_pixels = [bound_pixel]
-                while pending_pixels:
-                    pending_pixel = pending_pixels.pop()
-                    if pending_pixel not in visited_pixels:
-                        visited_pixels.add(pending_pixel)
-                        boundary.append(pending_pixel)
+                    pending_pixels = [bound_pixel]
+                    while pending_pixels:
+                        pending_pixel = pending_pixels.pop()
+                        if pending_pixel not in visited_pixels:
+                            visited_pixels.add(pending_pixel)
+                            boundary.append(pending_pixel)
 
-                        adj_pixels = set(calc_adjacent(pending_pixel, image))
-                        pending_pixels.extend(list(adj_pixels & boundary_pixels))
+                            adj_pixels = set(calc_adjacent(pending_pixel, image))
+                            pending_pixels.extend(list(adj_pixels & boundary_pixels))
 
-                boundaries.append(boundary)
+                    boundary_list.append(boundary)
+
+            boundaries.append(boundary_list)
+
+        if use_caching:
+            cache_image = Image.new('RGBA', image.size, color=(0, 0, 0, 0))
+            boundary_colors = distrib_colors(len(boundaries))
+            for boundary_list, color in zip(boundaries, boundary_colors):
+                boundary_alphas = [
+                    int((1.0/len(boundary_list))*255*i) for i in
+                    range(len(boundary_list), 0, -1)]
+                for boundary, alpha in zip(boundary_list, boundary_alphas):
+                    color_alpha = (color[0], color[1], color[2], alpha)
+                    for pixel in boundary:
+                        cache_image.putpixel(to_2d(pixel, cache_image), color_alpha)
+            cache_image.save(get_cache_path(image, 'bounds'))
 
         return boundaries
 
@@ -134,26 +156,26 @@ def main():
 
     ## Script Processing ##
 
-    base_image = Image.open(os.path.join(input_dir, 'silhouette.png'))
+    base_image = Image.open(os.path.join(input_dir, 'silhouette.png'))#'test.png'))
     over_image = Image.open(os.path.join(input_dir, 'overlay.png'))
     # TODO(JRC): Scale this image based on the scaling factor that will
     # be used for the pop effect.
     out_image = Image.new('RGBA', base_image.size, color=(255, 255, 255, 255))
 
     base_components = calc_components(base_image)
-    #base_boundaries = [calc_boundaries(bc, base_image) for bc in base_components]
+    base_boundaries = calc_boundaries(base_image, base_components)
     base_colors = distrib_colors(len(base_components))
 
+    '''
     for component, color in zip(base_components, base_colors):
         for component_pixel in component:
             out_image.putpixel(to_2d(component_pixel, out_image), color)
-
     '''
+
     for boundaries, color in zip(base_boundaries, base_colors):
         for boundary in boundaries:
             for boundary_pixel in boundary:
                 out_image.putpixel(to_2d(boundary_pixel, out_image), color)
-    '''
 
     out_image.save(os.path.join(output_dir, 'test.png'))
 
