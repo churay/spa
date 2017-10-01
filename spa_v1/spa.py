@@ -156,15 +156,20 @@ def main():
 
     ## Script Processing ##
 
-    base_image = Image.open(os.path.join(input_dir, 'silhouette.png'))#'test.png'))
+    base_image = Image.open(os.path.join(input_dir, 'silhouette_small.png'))#'silhouette.png'))#'test.png'))
     over_image = Image.open(os.path.join(input_dir, 'overlay.png'))
     # TODO(JRC): Scale this image based on the scaling factor that will
     # be used for the pop effect.
     out_image = Image.new('RGBA', base_image.size, color=(255, 255, 255, 255))
 
+    # TODO(JRC): This is the full loading functionality, which only needs to
+    # be re-run when there are changes to the base image.
     base_components = calc_components(base_image)
     base_boundaries = calc_boundaries(base_image, base_components)
     base_colors = distrib_colors(len(base_components))
+
+    # base_boundaries = calc_boundaries(base_image, [])
+    # base_colors = distrib_colors(len(base_boundaries))
 
     '''
     for component, color in zip(base_components, base_colors):
