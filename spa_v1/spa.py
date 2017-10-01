@@ -150,6 +150,53 @@ def main():
 
         return boundaries
 
+    def calc_cell_strokes(image, boundaries):
+        # TODO(JRC): Comb over this function again during refactoring and
+        # trim down all of the excessively long lines.
+        def find_best_stroke(curr_pixel, end_pixel, visited_pixels, stroke_pixels):
+            visited_pixels.add(curr_pixel)
+
+            if curr_pixel == end_pixel:
+                return []
+            else:
+                adj_pixels = set(calc_adjacent(curr_pixel, image)) & stroke_pixels
+                adj_pixels -= visited_pixels
+                sorted_adj_pixels = sorted(list(adj_pixels), reverse=True, key=lambda p:
+                    len([ap for ap in calc_adjacent(p, image) if is_cell_boundary(p, ap, image)]))
+
+                for adj_pixel in sorted_adj_pixels:
+                    adj_stroke = find_best_stroke(adj_pixel, end_pixel, visited_pixels, stroke_pixels)
+                    if adj_stroke is not None: return adj_stroke + [curr_pixel]
+                return None
+
+        strokes = []
+
+        for boundary_list in boundaries:
+            stroke_list = []
+            for boundary in boundary_list:
+                boundary_set = set(boundary)
+
+                start_pixel, next_pixel, end_pixel = None, None, None
+                for bound_pixel in boundary:
+                    adj_pixels = set(calc_adjacent(bound_pixel, image)) & boundary_set
+                    adj_sides = calc_connected_components(image, adj_pixels,
+                        lambda cp, ap, i: cp != bound_pixel and ap != bound_pixel)
+
+                    if len(adj_sides) > 1:
+                        start_pixel = bound_pixel
+                        next_pixel, end_pixel = adj_sides[0][0], adj_sides[1][0]
+                assert start_pixel, 'Failed to calculate stroke start position.'
+
+                visited_pixels = set([start_pixel])
+                stroke_pixels = find_best_stroke(next_pixel, end_pixel,
+                    visited_pixels, boundary_set) + [start_pixel]
+                assert stroke_pixels is not None, 'Failed to calculate stroke(s).'
+
+                stroke_list.append(stroke_pixels)
+            strokes.append(stroke_list)
+
+        return strokes
+
     ## Script Processing ##
 
     base_image = Image.open(os.path.join(input_dir, 'silhouette_small.png'))#'silhouette.png'))
@@ -162,8 +209,12 @@ def main():
     # be re-run when there are changes to the base image.
     base_cells = calc_opaque_cells(base_image)
     base_boundaries = calc_cell_boundaries(base_image, base_cells)
-    #base_strokes = calc_strokes(base_image, base_cells, base_boundaries)
+    base_strokes = calc_cell_strokes(base_image, base_boundaries)
     base_colors = distrib_colors(len(base_cells))
+
+    # TODO(JRC): When stroking the boundaries for all of the silhouettes, use
+    # graph distance instead of pixel distance for the fill to prevent artifacting
+    # on some silhouettes (e.g. the e).
 
     '''
     for cell, color in zip(base_cells, base_colors):
@@ -171,10 +222,12 @@ def main():
             out_image.putpixel(to_2d(cell_pixel, out_image), color)
     '''
 
+    '''
     for boundary_list, color in zip(base_boundaries, base_colors):
         for boundary in boundary_list:
             for boundary_pixel in boundary:
                 out_image.putpixel(to_2d(boundary_pixel, out_image), color)
+    '''
 
     out_image.save(os.path.join(output_dir, 'test.png'))
 
