@@ -18,7 +18,7 @@ def main():
     # TODO(JRC): This code currently assumes that the default boundary calculation
     # function was used when performing caching. This will need to be changed if more
     # schemes are ever introduced.
-    use_caching = True
+    use_caching = False
 
     ## Factored Functionality ##
 
@@ -56,7 +56,8 @@ def main():
         rgbs = [colorsys.hsv_to_rgb(h, 1.0, 1.0) for h in hues]
         return [tuple(int(cc*255) for cc in c) for c in rgbs]
 
-    def calc_components(image, is_valid=is_opaque, is_boundary=is_component_boundary):
+    def calc_components(image,
+            is_valid=is_opaque, is_boundary=is_component_boundary):
         if use_caching and os.path.isfile(get_cache_path(image, 'comps')):
             cache_image = Image.open(get_cache_path(image, 'comps'))
             components = collections.defaultdict(list)
@@ -97,7 +98,8 @@ def main():
 
         return components
 
-    def calc_boundaries(image, components, is_boundary=is_component_boundary):
+    def calc_boundaries(image, components,
+            is_valid=is_opaque, is_boundary=is_component_boundary):
         if use_caching and os.path.isfile(get_cache_path(image, 'bounds')):
             cache_image = Image.open(get_cache_path(image, 'bounds'))
             boundaries = collections.defaultdict(lambda: collections.defaultdict(list))
@@ -151,12 +153,37 @@ def main():
     # TODO(JRC): When stroking the boundaries for all of the silhouettes, use
     # graph distance instead of pixel distance for the fill to prevent artifacting
     # on some silhouettes (e.g. the e).
-    def calc_strokes():
-        pass
+    def calc_strokes(image, boundaries,
+            is_valid=is_opaque, is_boundary=is_component_boundary):
+        # TODO(JRC): Modify this so that it can be cyclic and so that
+        # pixels aren't retreaded (strict superset of edge restriction).
+        def calc_max_cycle(curr_pixel, cycle_pixel, curr_path, valid_pixels):
+            if curr_pixel == cycle_pixel and curr_path:
+                return curr_path
+            else:
+                adj_pixels = set(calc_adjacent(curr_pixel, image)) & valid_pixels
+                adj_pixels -= set(curr_path) - set((cycle_pixel,))
+
+                adj_paths = []
+                for adj_pixel in adj_pixels:
+                    adj_path = calc_max_cycle(adj_pixel, cycle_pixel,
+                        curr_path + [adj_pixel], valid_pixels)
+                    if adj_path: adj_paths.append(adj_path)
+
+                return adj_paths and max(adj_paths, key=lambda p: len(p))
+
+        strokes = []
+        for boundary_list in boundaries:
+            stroke_list = []
+            for boundary in boundary_list:
+                stroke = calc_max_cycle(boundary[0], boundary[0], [], set(boundary))
+                stroke_list.append(stroke)
+            strokes.append(stroke_list)
+        return strokes
 
     ## Script Processing ##
 
-    base_image = Image.open(os.path.join(input_dir, 'silhouette_small.png'))#'silhouette.png'))#'test.png'))
+    base_image = Image.open(os.path.join(input_dir, 'basic.png'))#'silhouette_small.png'))#'silhouette.png'))
     over_image = Image.open(os.path.join(input_dir, 'overlay.png'))
     # TODO(JRC): Scale this image based on the scaling factor that will
     # be used for the pop effect.
@@ -166,6 +193,7 @@ def main():
     # be re-run when there are changes to the base image.
     base_components = calc_components(base_image)
     base_boundaries = calc_boundaries(base_image, base_components)
+    base_strokes = calc_strokes(base_image, base_boundaries)
     base_colors = distrib_colors(len(base_components))
 
     # base_boundaries = calc_boundaries(base_image, [])
