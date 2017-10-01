@@ -18,9 +18,22 @@ def main():
     # TODO(JRC): This code currently assumes that the default boundary calculation
     # function was used when performing caching. This will need to be changed if more
     # schemes are ever introduced.
-    use_caching = False
+    use_caching = True
 
     ## Factored Functionality ##
+
+    # Caching/File Functions #
+
+    # TODO(JRC): Consider cleaning up all of this caching code by introducing
+    # a decorator that wraps each function and allows custom saving behavior
+    # to be defined.
+    def get_cache_path(image, cache_type):
+        image_filename = os.path.basename(image.filename)
+        image_name, image_ext = os.path.splitext(image_filename)
+        return os.path.join(output_dir,
+            '{0}_{1}{2}'.format(image_name, cache_type, image_ext))
+
+    # Basic Image Functions #
 
     def to_1d(px, py, img): return px + py * img.width
     def to_2d(pi, img):     return (int(pi % img.width), int(pi / img.width))
@@ -32,46 +45,12 @@ def main():
             if 0 <= px+dx < image.width and 0 <= py+dy < image.height
             and to_1d(px+dx, py+dy, image) != pixel]
 
-    def is_opaque(pixel, image):
-        return image.getpixel(to_2d(pixel, image))[3] != 0
-
-    # NOTE(JRC): Modify this function to redefine what it means for adjacent
-    # pixels in a given image to be members of different components.
-    def is_component_boundary(curr_pixel, next_pixel, image):
-        curr_alpha = image.getpixel(to_2d(curr_pixel, image))[3]
-        next_alpha = image.getpixel(to_2d(next_pixel, image))[3]
-        return curr_alpha * next_alpha == 0 and curr_alpha + next_alpha != 0
-
-    # TODO(JRC): Consider cleaning up all of this caching code by introducing
-    # a decorator that wraps each function and allows custom saving behavior
-    # to be defined.
-    def get_cache_path(image, cache_type):
-        image_filename = os.path.basename(image.filename)
-        image_name, image_ext = os.path.splitext(image_filename)
-        return os.path.join(output_dir,
-            '{0}_{1}{2}'.format(image_name, cache_type, image_ext))
-
-    def distrib_colors(count):
-        hues = [(1.0/count)*i for i in range(count)]
-        rgbs = [colorsys.hsv_to_rgb(h, 1.0, 1.0) for h in hues]
-        return [tuple(int(cc*255) for cc in c) for c in rgbs]
-
-    def calc_components(image,
-            is_valid=is_opaque, is_boundary=is_component_boundary):
-        if use_caching and os.path.isfile(get_cache_path(image, 'comps')):
-            cache_image = Image.open(get_cache_path(image, 'comps'))
-            components = collections.defaultdict(list)
-            for pixel in range(cache_image.width * cache_image.height):
-                if is_opaque(pixel, cache_image):
-                    color = cache_image.getpixel(to_2d(pixel, cache_image))
-                    components[color].append(pixel)
-            return components.values()
-
+    def calc_connected_components(image, pixel_set, are_adjacent):
         components = []
 
         visited_pixels = set()
-        for curr_pixel in range(image.width * image.height):
-            if is_valid(curr_pixel, image) and curr_pixel not in visited_pixels:
+        for curr_pixel in pixel_set:
+            if curr_pixel not in visited_pixels:
                 component = []
 
                 component_pixels = [curr_pixel]
@@ -84,22 +63,59 @@ def main():
                         adj_pixels = calc_adjacent(component_pixel, image)
                         component_pixels.extend(
                             adj_pixel for adj_pixel in adj_pixels if
-                            not is_boundary(component_pixel, adj_pixel, image))
+                            (adj_pixel in pixel_set and
+                            are_adjacent(component_pixel, adj_pixel, image)))
 
                 components.append(component)
 
+        return components
+
+    # Color Functions #
+
+    def is_opaque(pixel, image):
+        return image.getpixel(to_2d(pixel, image))[3] != 0
+
+    def distrib_colors(count):
+        hues = [(1.0/count)*i for i in range(count)]
+        rgbs = [colorsys.hsv_to_rgb(h, 1.0, 1.0) for h in hues]
+        return [tuple(int(cc*255) for cc in c) for c in rgbs]
+
+    # Advanced Image Functions #
+
+    # NOTE(JRC): A cell is defined to be a collection of pixels that are
+    # completely transparent (alpha == 0) or opaque (alpha != 0).
+    def is_cell_boundary(curr_pixel, next_pixel, image):
+        curr_alpha = image.getpixel(to_2d(curr_pixel, image))[3]
+        next_alpha = image.getpixel(to_2d(next_pixel, image))[3]
+        return curr_alpha * next_alpha == 0 and curr_alpha + next_alpha != 0
+
+    def calc_opaque_cells(image):
+        if use_caching and os.path.isfile(get_cache_path(image, 'comps')):
+            cache_image = Image.open(get_cache_path(image, 'comps'))
+            cells = collections.defaultdict(list)
+            for pixel in range(cache_image.width * cache_image.height):
+                if is_opaque(pixel, cache_image):
+                    color = cache_image.getpixel(to_2d(pixel, cache_image))
+                    cells[color].append(pixel)
+            return cells.values()
+
+        opaque_pixels = set(p for p in range(image.width * image.height) if
+            is_opaque(p, image))
+
+        cells = calc_connected_components(image, opaque_pixels,
+            lambda cp, ap, i: not is_cell_boundary(cp, ap, i))
+
         if use_caching:
             cache_image = Image.new('RGBA', image.size, color=(0, 0, 0, 0))
-            component_colors = distrib_colors(len(components))
-            for component, color in zip(components, component_colors):
-                for pixel in component:
+            cell_colors = distrib_colors(len(cells))
+            for cell, color in zip(cells, cell_colors):
+                for pixel in cell:
                     cache_image.putpixel(to_2d(pixel, cache_image), color)
             cache_image.save(get_cache_path(image, 'comps'))
 
-        return components
+        return cells
 
-    def calc_boundaries(image, components,
-            is_valid=is_opaque, is_boundary=is_component_boundary):
+    def calc_cell_boundaries(image, cells):
         if use_caching and os.path.isfile(get_cache_path(image, 'bounds')):
             cache_image = Image.open(get_cache_path(image, 'bounds'))
             boundaries = collections.defaultdict(lambda: collections.defaultdict(list))
@@ -111,28 +127,12 @@ def main():
 
         boundaries = []
 
-        for component in components:
-            boundary_list = []
-            boundary_pixels = set(cp for cp in component if
-                any(is_boundary(cp, ap, image) for ap in calc_adjacent(cp, image)))
+        for cell in cells:
+            boundary_pixels = set(cp for cp in cell if
+                any(is_cell_boundary(cp, ap, image) for ap in calc_adjacent(cp, image)))
 
-            visited_pixels = set()
-            for bound_pixel in boundary_pixels:
-                if bound_pixel not in visited_pixels:
-                    boundary = []
-
-                    pending_pixels = [bound_pixel]
-                    while pending_pixels:
-                        pending_pixel = pending_pixels.pop()
-                        if pending_pixel not in visited_pixels:
-                            visited_pixels.add(pending_pixel)
-                            boundary.append(pending_pixel)
-
-                            adj_pixels = set(calc_adjacent(pending_pixel, image))
-                            pending_pixels.extend(list(adj_pixels & boundary_pixels))
-
-                    boundary_list.append(boundary)
-
+            boundary_list = calc_connected_components(image, boundary_pixels,
+                lambda cp, ap, i: True)
             boundaries.append(boundary_list)
 
         if use_caching:
@@ -150,40 +150,9 @@ def main():
 
         return boundaries
 
-    # TODO(JRC): When stroking the boundaries for all of the silhouettes, use
-    # graph distance instead of pixel distance for the fill to prevent artifacting
-    # on some silhouettes (e.g. the e).
-    def calc_strokes(image, boundaries,
-            is_valid=is_opaque, is_boundary=is_component_boundary):
-        # TODO(JRC): Modify this so that it can be cyclic and so that
-        # pixels aren't retreaded (strict superset of edge restriction).
-        def calc_max_cycle(curr_pixel, cycle_pixel, curr_path, valid_pixels):
-            if curr_pixel == cycle_pixel and curr_path:
-                return curr_path
-            else:
-                adj_pixels = set(calc_adjacent(curr_pixel, image)) & valid_pixels
-                adj_pixels -= set(curr_path) - set((cycle_pixel,))
-
-                adj_paths = []
-                for adj_pixel in adj_pixels:
-                    adj_path = calc_max_cycle(adj_pixel, cycle_pixel,
-                        curr_path + [adj_pixel], valid_pixels)
-                    if adj_path: adj_paths.append(adj_path)
-
-                return adj_paths and max(adj_paths, key=lambda p: len(p))
-
-        strokes = []
-        for boundary_list in boundaries:
-            stroke_list = []
-            for boundary in boundary_list:
-                stroke = calc_max_cycle(boundary[0], boundary[0], [], set(boundary))
-                stroke_list.append(stroke)
-            strokes.append(stroke_list)
-        return strokes
-
     ## Script Processing ##
 
-    base_image = Image.open(os.path.join(input_dir, 'basic.png'))#'silhouette_small.png'))#'silhouette.png'))
+    base_image = Image.open(os.path.join(input_dir, 'silhouette_small.png'))#'silhouette.png'))
     over_image = Image.open(os.path.join(input_dir, 'overlay.png'))
     # TODO(JRC): Scale this image based on the scaling factor that will
     # be used for the pop effect.
@@ -191,22 +160,19 @@ def main():
 
     # TODO(JRC): This is the full loading functionality, which only needs to
     # be re-run when there are changes to the base image.
-    base_components = calc_components(base_image)
-    base_boundaries = calc_boundaries(base_image, base_components)
-    base_strokes = calc_strokes(base_image, base_boundaries)
-    base_colors = distrib_colors(len(base_components))
-
-    # base_boundaries = calc_boundaries(base_image, [])
-    # base_colors = distrib_colors(len(base_boundaries))
+    base_cells = calc_opaque_cells(base_image)
+    base_boundaries = calc_cell_boundaries(base_image, base_cells)
+    #base_strokes = calc_strokes(base_image, base_cells, base_boundaries)
+    base_colors = distrib_colors(len(base_cells))
 
     '''
-    for component, color in zip(base_components, base_colors):
-        for component_pixel in component:
-            out_image.putpixel(to_2d(component_pixel, out_image), color)
+    for cell, color in zip(base_cells, base_colors):
+        for cell_pixel in cell:
+            out_image.putpixel(to_2d(cell_pixel, out_image), color)
     '''
 
-    for boundaries, color in zip(base_boundaries, base_colors):
-        for boundary in boundaries:
+    for boundary_list, color in zip(base_boundaries, base_colors):
+        for boundary in boundary_list:
             for boundary_pixel in boundary:
                 out_image.putpixel(to_2d(boundary_pixel, out_image), color)
 
