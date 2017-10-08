@@ -2,7 +2,7 @@
 
 __doc__ = '''Module for "SPA" Console Application'''
 
-import os, optparse, collections, colorsys
+import os, sys, optparse, collections, colorsys
 import spa
 from PIL import Image
 
@@ -10,10 +10,6 @@ from PIL import Image
 
 def main():
     ## Program Constants ##
-
-    base_dir = os.path.dirname(os.path.realpath(__file__))
-    input_dir = os.path.join(base_dir, 'in')
-    output_dir = os.path.join(base_dir, 'out')
 
     # TODO(JRC): This code currently assumes that the default boundary calculation
     # function was used when performing caching. This will need to be changed if more
@@ -30,7 +26,7 @@ def main():
     def get_cache_path(image, cache_type):
         image_filename = os.path.basename(image.filename)
         image_name, image_ext = os.path.splitext(image_filename)
-        return os.path.join(output_dir,
+        return os.path.join(spa.output_dir,
             '{0}_{1}{2}'.format(image_name, cache_type, image_ext))
 
     # Basic Image Functions #
@@ -157,11 +153,11 @@ def main():
             visited_pixels.add(curr_pixel)
 
             if curr_pixel == end_pixel:
-                return []
+                return [curr_pixel]
             else:
                 adj_pixels = set(calc_adjacent(curr_pixel, image)) & stroke_pixels
                 adj_pixels -= visited_pixels
-                sorted_adj_pixels = sorted(list(adj_pixels), reverse=True, key=lambda p:
+                sorted_adj_pixels = sorted(list(adj_pixels), reverse=False, key=lambda p:
                     len([ap for ap in calc_adjacent(p, image) if is_cell_boundary(p, ap, image)]))
 
                 for adj_pixel in sorted_adj_pixels:
@@ -199,11 +195,12 @@ def main():
 
     ## Script Processing ##
 
-    base_image = Image.open(os.path.join(input_dir, 'silhouette_small.png'))#'silhouette.png'))
-    over_image = Image.open(os.path.join(input_dir, 'overlay.png'))
-    # TODO(JRC): Scale this image based on the scaling factor that will
-    # be used for the pop effect.
-    out_image = Image.new('RGBA', base_image.size, color=(255, 255, 255, 255))
+    # TODO(JRC): Change 'find_best_stroke' above into an iterative method so that
+    # this isn't necessary.
+    sys.setrecursionlimit(5000)
+
+    base_image = Image.open(os.path.join(spa.input_dir, 'test2.png'))#'basic.png'))#'silhouette_small.png'))#'silhouette.png'))
+    over_image = Image.open(os.path.join(spa.input_dir, 'overlay.png'))
 
     # TODO(JRC): This is the full loading functionality, which only needs to
     # be re-run when there are changes to the base image.
@@ -212,9 +209,27 @@ def main():
     base_strokes = calc_cell_strokes(base_image, base_boundaries)
     base_colors = distrib_colors(len(base_cells))
 
+    # TODO(JRC): Complete the following tasks to reach the stencil stroke capability:
+    # - Fill in each boundary sequentially to make the movie.
+    # - Fill in each boundary on a time frame to make the movie (1 pixel per frame).
+    # - Add the ability to fill in using an arbitrary stencil (requires implementing
+    #   things like tangent detection, stencil specs, etc.)
+
+    # TODO(JRC): Scale this image based on the scaling factor that will
+    # be used for the pop effect.
+    out_image = Image.new('RGBA', base_image.size, color=(255, 255, 255, 255))
+
     # TODO(JRC): When stroking the boundaries for all of the silhouettes, use
     # graph distance instead of pixel distance for the fill to prevent artifacting
     # on some silhouettes (e.g. the e).
+    out_frames = [out_image.copy()]
+    for base_stroke in [bs for bsl in base_strokes for bs in bsl]:
+        for stroke_pixel in base_stroke:
+            out_frame = out_frames[-1].copy()
+            out_frame.putpixel(to_2d(stroke_pixel, out_image), (0, 0, 0, 255))
+            out_frames.append(out_frame)
+
+    assert spa.render_movie('test', out_frames, fps=600), 'Failed to render movie.'
 
     '''
     for cell, color in zip(base_cells, base_colors):
@@ -229,7 +244,7 @@ def main():
                 out_image.putpixel(to_2d(boundary_pixel, out_image), color)
     '''
 
-    out_image.save(os.path.join(output_dir, 'test.png'))
+    # out_image.save(os.path.join(spa.output_dir, 'test.png'))
 
 ### Miscellaneous ###
 
