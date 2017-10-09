@@ -28,7 +28,6 @@ def render_movie(movie_name, frames, fps=60):
         '-pix_fmt', 'yuv420p',
         #'-loglevel', '-8',
         movie_path]
-    #print ' '.join(map(str, movie_args))
     movie_err = subprocess.call(map(str, movie_args))
 
     return movie_err == 0

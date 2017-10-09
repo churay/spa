@@ -14,7 +14,7 @@ def main():
     # TODO(JRC): This code currently assumes that the default boundary calculation
     # function was used when performing caching. This will need to be changed if more
     # schemes are ever introduced.
-    use_caching = True
+    use_caching = False
 
     ## Factored Functionality ##
 
@@ -70,6 +70,9 @@ def main():
 
     def is_opaque(pixel, image):
         return image.getpixel(to_2d(pixel, image))[3] != 0
+
+    def is_magenta(pixel, image):
+        return image.getpixel(to_2d(pixel, image))[:3] == (255, 0, 255)
 
     def distrib_colors(count):
         hues = [(1.0/count)*i for i in range(count)]
@@ -157,13 +160,23 @@ def main():
             else:
                 adj_pixels = set(calc_adjacent(curr_pixel, image)) & stroke_pixels
                 adj_pixels -= visited_pixels
-                sorted_adj_pixels = sorted(list(adj_pixels), reverse=False, key=lambda p:
+                sorted_adj_pixels = sorted(list(adj_pixels), reverse=True, key=lambda p:
                     len([ap for ap in calc_adjacent(p, image) if is_cell_boundary(p, ap, image)]))
 
                 for adj_pixel in sorted_adj_pixels:
                     adj_stroke = find_best_stroke(adj_pixel, end_pixel, visited_pixels, stroke_pixels)
                     if adj_stroke is not None: return adj_stroke + [curr_pixel]
                 return None
+
+        # TODO(JRC): This is calculated using the shoelace formula, which I
+        # should read more about to understand how it works.
+        def calc_stroke_orient(stroke):
+            stroke_2d = [to_2d(sp, image) for sp in stroke]
+            stroke_zip = zip(stroke_2d, stroke_2d[1:] + [stroke_2d[0]])
+
+            stroke_orient = sum(p0[0]*p1[1] for p0, p1 in stroke_zip) - \
+                sum(p1[0]*p0[1] for p0, p1 in stroke_zip)
+            return stroke_orient < 0
 
         strokes = []
 
@@ -172,21 +185,48 @@ def main():
             for boundary in boundary_list:
                 boundary_set = set(boundary)
 
-                start_pixel, next_pixel, end_pixel = None, None, None
+                start_pixels = []
+                end_pixel = None
                 for bound_pixel in boundary:
                     adj_pixels = set(calc_adjacent(bound_pixel, image)) & boundary_set
                     adj_sides = calc_connected_components(image, adj_pixels,
-                        lambda cp, ap, i: cp != bound_pixel and ap != bound_pixel)
+                        lambda cp, ap, i: not set([cp, ap]) & set([bound_pixel]))
 
                     if len(adj_sides) > 1:
-                        start_pixel = bound_pixel
-                        next_pixel, end_pixel = adj_sides[0][0], adj_sides[1][0]
-                assert start_pixel, 'Failed to calculate stroke start position.'
+                        start_pixels.extend([bound_pixel, adj_sides[0][0]])
+                        end_pixel = adj_sides[1][0]
+                        break
+                    elif len(adj_sides) == 1:
+                        retry_sides_list = []
+                        for adj_pixel in adj_pixels:
+                            retry_pixels = adj_pixels - set([adj_pixel])
+                            retry_sides = calc_connected_components(image, retry_pixels,
+                                lambda cp, ap, i: not set([cp, ap]) & set([bound_pixel, adj_pixel]))
+                            retry_sides_list.append((adj_pixel, retry_sides))
 
-                visited_pixels = set([start_pixel])
-                stroke_pixels = find_best_stroke(next_pixel, end_pixel,
-                    visited_pixels, boundary_set) + [start_pixel]
+                        retry_sides_list = sorted(retry_sides_list , reverse=True,
+                            key=lambda p: len(p[1]))
+                        if any(len(s) > 1 for p, s in retry_sides_list):
+                            retry_pixel, retry_sides = retry_sides_list[0]
+                            start_pixels.extend([bound_pixel, retry_pixel, retry_sides[0][0]])
+                            end_pixel = retry_sides[1][0]
+                            break
+                assert start_pixels, 'Failed to calculate stroke start position.'
+
+                visited_pixels = set(start_pixels)
+                stroke_pixels = find_best_stroke(start_pixels[-1], end_pixel,
+                    visited_pixels, boundary_set)
                 assert stroke_pixels is not None, 'Failed to calculate stroke(s).'
+                stroke_pixels.extend(start_pixels[:-1][::-1])
+
+                orient_pixel = next((p for p in stroke_pixels if is_magenta(p, image)), None)
+                if orient_pixel:
+                    orient_index = stroke_pixels.index(orient_pixel)
+                    stroke_pixels = stroke_pixels[orient_index:] + stroke_pixels[:orient_index]
+
+                    orient_dir = image.getpixel(to_2d(orient_pixel, image))[3] == 255
+                    curr_dir = calc_stroke_orient(stroke_pixels)
+                    if orient_dir != curr_dir: stroke_pixels.reverse()
 
                 stroke_list.append(stroke_pixels)
             strokes.append(stroke_list)
@@ -199,7 +239,7 @@ def main():
     # this isn't necessary.
     sys.setrecursionlimit(5000)
 
-    base_image = Image.open(os.path.join(spa.input_dir, 'test2.png'))#'basic.png'))#'silhouette_small.png'))#'silhouette.png'))
+    base_image = Image.open(os.path.join(spa.input_dir, 'test3.png'))#'silhouette_small.png'))#'silhouette.png'))
     over_image = Image.open(os.path.join(spa.input_dir, 'overlay.png'))
 
     # TODO(JRC): This is the full loading functionality, which only needs to
@@ -229,12 +269,13 @@ def main():
             out_frame.putpixel(to_2d(stroke_pixel, out_image), (0, 0, 0, 255))
             out_frames.append(out_frame)
 
-    assert spa.render_movie('test', out_frames, fps=600), 'Failed to render movie.'
+    assert spa.render_movie('test', out_frames, fps=60), 'Failed to render movie.'
 
     '''
     for cell, color in zip(base_cells, base_colors):
         for cell_pixel in cell:
             out_image.putpixel(to_2d(cell_pixel, out_image), color)
+    out_image.save(os.path.join(spa.output_dir, 'test.png'))
     '''
 
     '''
@@ -242,9 +283,8 @@ def main():
         for boundary in boundary_list:
             for boundary_pixel in boundary:
                 out_image.putpixel(to_2d(boundary_pixel, out_image), color)
+    out_image.save(os.path.join(spa.output_dir, 'test.png'))
     '''
-
-    # out_image.save(os.path.join(spa.output_dir, 'test.png'))
 
 ### Miscellaneous ###
 
