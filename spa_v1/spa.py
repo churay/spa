@@ -2,7 +2,9 @@
 
 __doc__ = '''Module for "SPA" Console Application'''
 
-import os, sys, optparse, collections, colorsys
+import os, sys, optparse, collections
+import math, colorsys
+
 import spa
 from PIL import Image
 
@@ -239,7 +241,7 @@ def main():
     # this isn't necessary.
     sys.setrecursionlimit(5000)
 
-    base_image = Image.open(os.path.join(spa.input_dir, 'test3.png'))#'silhouette_small.png'))#'silhouette.png'))
+    base_image = Image.open(os.path.join(spa.input_dir, 'silhouette_small.png'))#'silhouette_small.png'))#'silhouette.png'))
     over_image = Image.open(os.path.join(spa.input_dir, 'overlay.png'))
 
     # TODO(JRC): This is the full loading functionality, which only needs to
@@ -263,11 +265,41 @@ def main():
     # graph distance instead of pixel distance for the fill to prevent artifacting
     # on some silhouettes (e.g. the e).
     out_frames = [out_image.copy()]
+    base_stroke_list = [bs for bsl in base_strokes for bs in bsl]
+    num_stroke_frames = max(len(bsl) for bsl in base_stroke_list)
+
+    base_stroke_fills = []
+    for base_stroke in base_stroke_list:
+        stroke_fill = set()
+
+        stroke_index, stroke_offset = 0, 0
+        stroke_stride = math.ceil(num_stroke_frames / len(base_stroke))
+        while len(stroke_fill) < len(base_stroke):
+            stroke_fill.add(int(stroke_offset + stroke_index))
+            stroke_index += stroke_stride
+            if stroke_index >= num_stroke_frames:
+                stroke_index = 0
+                stroke_offset += 1
+
+        base_stroke_fills.append(stroke_fill)
+
+    base_stroke_indexes = [0] * len(base_stroke_list)
+    for frame_index in range(num_stroke_frames):
+        frame_image = out_frames[-1].copy()
+        for base_index, base_stroke in enumerate(base_stroke_list):
+            if frame_index in base_stroke_fills[base_index]:
+                stroke_pixel = base_stroke[base_stroke_indexes[base_index]]
+                frame_image.putpixel(to_2d(stroke_pixel, out_image), (0, 0, 0, 255))
+                base_stroke_indexes[base_index] += 1
+        out_frames.append(frame_image)
+
+    '''
     for base_stroke in [bs for bsl in base_strokes for bs in bsl]:
         for stroke_pixel in base_stroke:
             out_frame = out_frames[-1].copy()
             out_frame.putpixel(to_2d(stroke_pixel, out_image), (0, 0, 0, 255))
             out_frames.append(out_frame)
+    '''
 
     assert spa.render_movie('test', out_frames, fps=60), 'Failed to render movie.'
 
