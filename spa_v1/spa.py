@@ -2,9 +2,7 @@
 
 __doc__ = '''Module for "SPA" Console Application'''
 
-import os, sys, optparse, collections
-import math, colorsys
-
+import os, sys, optparse, collections, colorsys
 import spa
 from PIL import Image
 
@@ -241,7 +239,7 @@ def main():
     # this isn't necessary.
     sys.setrecursionlimit(5000)
 
-    base_image = Image.open(os.path.join(spa.input_dir, 'silhouette_small.png'))#'silhouette_small.png'))#'silhouette.png'))
+    base_image = Image.open(os.path.join(spa.input_dir, 'test3.png'))#'silhouette_small.png'))#'silhouette.png'))
     over_image = Image.open(os.path.join(spa.input_dir, 'overlay.png'))
 
     # TODO(JRC): This is the full loading functionality, which only needs to
@@ -264,33 +262,33 @@ def main():
     # TODO(JRC): When stroking the boundaries for all of the silhouettes, use
     # graph distance instead of pixel distance for the fill to prevent artifacting
     # on some silhouettes (e.g. the e).
+    # TODO(JRC): Rework the algorithm below to use the following constraints:
+    # - All strokes begin working on the first frame.
+    # - All strokes finalize their work on the last frame.
+    # - Shorter strokes make progress throughout the process as evenly distributed
+    #   as possible.
     out_frames = [out_image.copy()]
     base_stroke_list = [bs for bsl in base_strokes for bs in bsl]
     num_stroke_frames = max(len(bsl) for bsl in base_stroke_list)
 
     base_stroke_fills = []
     for base_stroke in base_stroke_list:
-        stroke_fill = set()
+        stroke_fill = [[] for i in range(num_stroke_frames)]
 
-        stroke_index, stroke_offset = 0, 0
-        stroke_stride = math.ceil(num_stroke_frames / len(base_stroke))
-        while len(stroke_fill) < len(base_stroke):
-            stroke_fill.add(int(stroke_offset + stroke_index))
-            stroke_index += stroke_stride
-            if stroke_index >= num_stroke_frames:
-                stroke_index = 0
-                stroke_offset += 1
+        stroke_step = num_stroke_frames / float(len(base_stroke) - 1)
+        stroke_offsets = [stroke_step * si for si in range(len(base_stroke))]
+        for stroke_index, stroke_offset in enumerate(stroke_offsets):
+            adj_stroke_offset = min(int(stroke_offset), num_stroke_frames - 1)
+            stroke_fill[adj_stroke_offset].append(stroke_index)
 
         base_stroke_fills.append(stroke_fill)
 
-    base_stroke_indexes = [0] * len(base_stroke_list)
     for frame_index in range(num_stroke_frames):
         frame_image = out_frames[-1].copy()
-        for base_index, base_stroke in enumerate(base_stroke_list):
-            if frame_index in base_stroke_fills[base_index]:
-                stroke_pixel = base_stroke[base_stroke_indexes[base_index]]
+        for base_stroke, base_fill in zip(base_stroke_list, base_stroke_fills):
+            for stroke_index in base_fill[frame_index]:
+                stroke_pixel = base_stroke[stroke_index]
                 frame_image.putpixel(to_2d(stroke_pixel, out_image), (0, 0, 0, 255))
-                base_stroke_indexes[base_index] += 1
         out_frames.append(frame_image)
 
     '''
@@ -301,7 +299,10 @@ def main():
             out_frames.append(out_frame)
     '''
 
-    assert spa.render_movie('test', out_frames, fps=60), 'Failed to render movie.'
+    # TODO(JRC): Add a procedure that pads out the ending of a particular frame
+    # sequence by a certain amount.
+    out_frames += [out_frames[-1].copy() for i in range(60)]
+    assert spa.render_movie('test', out_frames, fps=120), 'Failed to render movie.'
 
     '''
     for cell, color in zip(base_cells, base_colors):
