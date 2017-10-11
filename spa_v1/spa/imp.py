@@ -1,6 +1,6 @@
 __doc__ = '''Module for the Image Processing Functionality'''
 
-import colorsys
+import sys, colorsys
 import spa
 
 # TODO(JRC): Do an audit of the names in this function and make improvements
@@ -90,6 +90,10 @@ def calc_cell_boundaries(image, cells):
     return boundaries
 
 def calc_cell_strokes(image, boundaries):
+    # TODO(JRC): Change this method to be an iterative method so that this
+    # weird adjustment of the recursion limit isn't necessary.
+    sys.setrecursionlimit(5000)
+
     # TODO(JRC): Comb over this function again during refactoring and
     # trim down all of the excessively long lines.
     def find_best_stroke(curr_pixel, end_pixel, visited_pixels, stroke_pixels):

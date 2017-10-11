@@ -8,7 +8,28 @@ base_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 input_dir = os.path.join(base_dir, 'in')
 output_dir = os.path.join(base_dir, 'out')
 
+colors = {
+    'red':        (255,   0,   0),
+    'green':      (  0, 255,   0),
+    'blue':       (  0,   0, 255),
+
+    'magenta':    (255,   0, 255),
+
+    'black':      (  0,   0,   0),
+    'white':      (255, 255, 255),
+}
+
 ### Module Functions ###
+
+def color(name, opacity=255):
+    color_tuple = colors.get(name, 'black')
+    return (color_tuple[0], color_tuple[1], color_tuple[2], opacity)
+
+def display_status(item, curr, total):
+    sys.stdout.write('\r')
+    sys.stdout.write('  processing %s %d/%d...' % (item, curr+1, total))
+    if curr + 1 >= total: sys.stdout.write('\n')
+    sys.stdout.flush()
 
 def render_movie(movie_name, frames, fps=60):
     movie_dir = os.path.join(output_dir, movie_name)
@@ -57,9 +78,3 @@ def cache(cache_id):
 
         return cache_func
     return cache_decorator
-
-def display_status(item, curr, total):
-    sys.stdout.write('\r')
-    sys.stdout.write('  processing %s %d/%d...' % (item, curr+1, total))
-    if curr + 1 >= total: sys.stdout.write('\n')
-    sys.stdout.flush()
