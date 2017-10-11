@@ -1,6 +1,6 @@
 __doc__ = '''Module for SPA ((Sequential Picture Amalgamator)) Globals'''
 
-import os, sys, shutil, subprocess
+import os, sys, shutil, subprocess, json
 
 ### Module Constants ###
 
@@ -31,6 +31,32 @@ def render_movie(movie_name, frames, fps=60):
     movie_err = subprocess.call(map(str, movie_args))
 
     return movie_err == 0
+
+# TODO(JRC): Write a function that colorizes cache files so that they're
+# easier to debug.
+def cache(cache_id):
+    def cache_decorator(func):
+        def cache_func(image, *args):
+            image_filename = os.path.basename(image.filename)
+            image_name = os.path.splitext(image_filename)[0]
+            cache_path = os.path.join(output_dir,
+                '{0}_{1}.json'.format(image_name, cache_id))
+
+            # If the cache file exists and has been modified more recently
+            # than the source image file, then use the cached result.
+            if os.path.isfile(cache_path) and \
+                    os.path.getmtime(image.filename) < os.path.getmtime(cache_path):
+                with open(cache_path, 'r') as cache_file:
+                    result = json.load(cache_file)
+                return result
+            else:
+                result = func(image, *args)
+                with open(cache_path, 'w') as cache_file:
+                    json.dump(result, cache_file)
+                return result
+
+        return cache_func
+    return cache_decorator
 
 def display_status(item, curr, total):
     sys.stdout.write('\r')
