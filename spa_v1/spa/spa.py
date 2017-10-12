@@ -12,12 +12,12 @@ colors = {
     'red':        (255,   0,   0),
     'green':      (  0, 255,   0),
     'blue':       (  0,   0, 255),
-
     'magenta':    (255,   0, 255),
-
     'black':      (  0,   0,   0),
     'white':      (255, 255, 255),
 }
+
+align = type('Enum', (), {'lo': -3, 'mid': -2, 'hi': -1})
 
 ### Module Functions ###
 
@@ -50,6 +50,11 @@ def render_movie(movie_name, frames, fps=60):
         #'-loglevel', '-8',
         movie_path]
     movie_err = subprocess.call(map(str, movie_args))
+
+    '''
+    ffmpeg -i test.mp4 -i test2.mp4 -filter complex "[0:v:0] [0:a:0] [1:v:0] [1:a:0] concat=n=2:v=1:a=1 [v] [a]"
+    -map "[v]" -map "[a]" test3.mp4
+    '''
 
     return movie_err == 0
 

@@ -36,6 +36,27 @@ def calc_adjacent(pixel, image):
         if 0 <= px+dx < image.width and 0 <= py+dy < image.height
         and to_1d(px+dx, py+dy, image) != pixel]
 
+# TODO(JRC): Consider adding support for alignment by percentages as well.
+def calc_alignment(align_coords, image, subimage=None):
+    output_coords = []
+
+    for align_idx, align_coord in enumerate(align_coords):
+        if align_coord == spa.align.lo:
+            output_coord = 0
+        elif align_coord == spa.align.mid:
+            image_coord = image.size[align_idx] / 2
+            subimage_adjust = subimage.size[align_idx] / 2 if subimage else 0
+            output_coord = image_coord - subimage_adjust
+        elif align_coord == spa.align.hi:
+            image_coord = image.size[align_idx] - 1
+            subimage_adjust = subimage.size[align_idx] if subimage else 0
+            output_coord = image_coord - subimage_adjust
+        else:
+            output_coord = align_coord
+        output_coords.append(output_coord)
+
+    return tuple(output_coords)
+
 def is_cell_boundary(curr_pixel, next_pixel, image):
     curr_alpha = image.getpixel(to_2d(curr_pixel, image))[3]
     next_alpha = image.getpixel(to_2d(next_pixel, image))[3]
