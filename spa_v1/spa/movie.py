@@ -50,7 +50,7 @@ class movie():
 
     ### Methods ###
 
-    def add_sequence(seq_func, duration, index=None):
+    def add_sequence(self, seq_func, duration, index=None):
         index = index if index is not None else len(self._sequences)
         self._sequences.insert(index, (seq_func, duration))
         self._filters.insert(index, [])
@@ -58,17 +58,17 @@ class movie():
     # TODO(JRC): For the time being, a filter 'window' can only be specified
     # in terms of percentage through the sequence (e.g. (0.0, 1.0) for the
     # whole sequence); eventually, support for more options may be desirable.
-    def add_filter(filt_func, window, index=-1, subindex=-1):
+    def add_filter(self, filt_func, window, index=-1, subindex=-1):
         self._filters[index].insert(subindex, (filt_func, window))
 
-    def rem_sequence(index=-1):
+    def rem_sequence(self, index=-1):
         self._sequences.pop(index)
         self._filters.pop(index)
 
-    def rem_filter(index=-1, subindex=-1):
+    def rem_filter(self, index=-1, subindex=-1):
         self._filters[index].pop(subindex)
 
-    def render(movie_name):
+    def render(self, movie_name):
         seq_frame_lists = [[] for s in self._sequences]
 
         # Process Sequences #
@@ -109,7 +109,7 @@ class movie():
         os.makedirs(movie_dir)
 
         seq_paths = []
-        for seq_index, (_, duration) in enumerate(seq_frame_lists, self._sequences):
+        for seq_index, (_, duration) in enumerate(self._sequences):
             seq_path = os.path.join(movie_dir, '{0}-{1}.mp4'.format(movie_name, seq_index))
             seq_tmpl = os.path.join(movie_dir, '{0}-{1}-%d.png'.format(movie_name, seq_index))
             seq_fps = len(seq_frame_lists[seq_index]) / float(duration)
@@ -135,6 +135,6 @@ class movie():
 
     ### Helpers ###
 
-    def _get_seq_type(index):
+    def _get_seq_type(self, index):
         sequence = self._sequences[index][0]
         return len(inspect.getargspec(sequence).args)

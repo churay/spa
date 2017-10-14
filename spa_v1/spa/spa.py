@@ -59,7 +59,7 @@ def cache(cache_id):
         return cache_func
     return cache_decorator
 
-def ffmpeg_render(path, template, fps=60, debug=True):
+def ffmpeg_render(path, template, fps=60.0, debug=True):
     ffmpeg_args = ['ffmpeg']
     ffmpeg_args.extend([
         '-r', fps,
@@ -67,10 +67,10 @@ def ffmpeg_render(path, template, fps=60, debug=True):
         '-c:v', 'libx264',
         '-vb', '6000k',
         '-pix_fmt', 'yuv420p'])
-    if debug:
-        ffmpeg_args.extend(['-loglevel', '-8'])
+    if debug: ffmpeg_args.extend(['-loglevel', '-8'])
     ffmpeg_args.extend([path])
 
+    if debug: print ' '.join(map(str, ffmpeg_args))
     return subprocess.call(map(str, ffmpeg_args)) == 0
 
 def ffmpeg_concat(path, lhs_path, rhs_path, debug=True):
@@ -81,8 +81,8 @@ def ffmpeg_concat(path, lhs_path, rhs_path, debug=True):
         '-filter', 'complex', '"[0:v:0] [0:a:0] [1:v:0] [1:a:0] concat=n=2:v=1:a=1 [v] [a]"'
         '-map', '"[v]"',
         '-map', '"[a]"'])
-    if debug:
-        ffmpeg_args.extend(['-loglevel', '-8'])
+    if debug: ffmpeg_args.extend(['-loglevel', '-8'])
     ffmpeg_args.extend([path])
 
+    if debug: print ' '.join(map(str, ffmpeg_args))
     return subprocess.call(map(str, ffmpeg_args)) == 0
