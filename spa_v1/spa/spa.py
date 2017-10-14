@@ -1,6 +1,6 @@
 __doc__ = '''Module for SPA ((Sequential Picture Amalgamator)) Globals'''
 
-import os, sys, shutil, subprocess, json
+import os, sys, json, subprocess
 
 ### Module Constants ###
 
@@ -31,38 +31,13 @@ def display_status(item, curr, total):
     if curr + 1 >= total: sys.stdout.write('\n')
     sys.stdout.flush()
 
-def render_movie(movie_name, frames, fps=60):
-    movie_dir = os.path.join(output_dir, movie_name)
-    shutil.rmtree(movie_dir, True)
-    os.makedirs(movie_dir)
-
-    movie_path = os.path.join(movie_dir, '{0}.mp4'.format(movie_name))
-    frame_tmpl = os.path.join(movie_dir, '{0}-%d.png'.format(movie_name))
-    for frame_index, frame in enumerate(frames):
-        frame.save(os.path.join(movie_dir, frame_tmpl % frame_index))
-
-    movie_args = ['ffmpeg',
-        '-r', fps,
-        '-i', frame_tmpl,
-        '-c:v', 'libx264',
-        '-vb', '6000k',
-        '-pix_fmt', 'yuv420p',
-        #'-loglevel', '-8',
-        movie_path]
-    movie_err = subprocess.call(map(str, movie_args))
-
-    '''
-    ffmpeg -i test.mp4 -i test2.mp4 -filter complex "[0:v:0] [0:a:0] [1:v:0] [1:a:0] concat=n=2:v=1:a=1 [v] [a]"
-    -map "[v]" -map "[a]" test3.mp4
-    '''
-
-    return movie_err == 0
-
 # TODO(JRC): Write a function that colorizes cache files so that they're
 # easier to debug.
 def cache(cache_id):
     def cache_decorator(func):
         def cache_func(image, *args):
+            if not hasattr(image, 'filename'): return func(image, *args)
+
             image_filename = os.path.basename(image.filename)
             image_name = os.path.splitext(image_filename)[0]
             cache_path = os.path.join(output_dir,
@@ -83,3 +58,31 @@ def cache(cache_id):
 
         return cache_func
     return cache_decorator
+
+def ffmpeg_render(path, template, fps=60, debug=True):
+    ffmpeg_args = ['ffmpeg']
+    ffmpeg_args.extend([
+        '-r', fps,
+        '-i', template,
+        '-c:v', 'libx264',
+        '-vb', '6000k',
+        '-pix_fmt', 'yuv420p'])
+    if debug:
+        ffmpeg_args.extend(['-loglevel', '-8'])
+    ffmpeg_args.extend([path])
+
+    return subprocess.call(map(str, ffmpeg_args)) == 0
+
+def ffmpeg_concat(path, lhs_path, rhs_path, debug=True):
+    ffmpeg_args = ['ffmpeg']
+    ffmpeg_args.extend([
+        '-i', lhs_path,
+        '-i', rhs_path,
+        '-filter', 'complex', '"[0:v:0] [0:a:0] [1:v:0] [1:a:0] concat=n=2:v=1:a=1 [v] [a]"'
+        '-map', '"[v]"',
+        '-map', '"[a]"'])
+    if debug:
+        ffmpeg_args.extend(['-loglevel', '-8'])
+    ffmpeg_args.extend([path])
+
+    return subprocess.call(map(str, ffmpeg_args)) == 0

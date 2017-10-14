@@ -1,6 +1,7 @@
 __doc__ = '''Module for the Movie Class Implementation'''
 
-import collections
+import os, sys, shutil, inspect
+import spa
 
 '''
 movie = spa.movie()
@@ -49,27 +50,91 @@ class movie():
 
     ### Methods ###
 
-    def add_sequence(seq_func, duration, index=-1):
-        pass
+    def add_sequence(seq_func, duration, index=None):
+        index = index if index is not None else len(self._sequences)
+        self._sequences.insert(index, (seq_func, duration))
+        self._filters.insert(index, [])
 
-    def add_transition(tran_func, duration, index=-1):
-        pass
+    # TODO(JRC): For the time being, a filter 'window' can only be specified
+    # in terms of percentage through the sequence (e.g. (0.0, 1.0) for the
+    # whole sequence); eventually, support for more options may be desirable.
+    def add_filter(filt_func, window, index=-1, subindex=-1):
+        self._filters[index].insert(subindex, (filt_func, window))
 
-    # TODO(JRC): Figure out what arguments need to be added here in order
-    # to allow filters to be applied to a subset of a sequence.
-    def add_filter(filt_func, index=-1, **kwargs):
-        pass
+    def rem_sequence(index=-1):
+        self._sequences.pop(index)
+        self._filters.pop(index)
 
-    def save(name):
-        pass
+    def rem_filter(index=-1, subindex=-1):
+        self._filters[index].pop(subindex)
+
+    def render(movie_name):
+        seq_frame_lists = [[] for s in self._sequences]
+
+        # Process Sequences #
+
+        # NOTE(JRC): Processing one sequence type per loop allows the sequences
+        # to be processed before the transitions.
+        for iter_seq_type in range(1, 3):
+            for seq_index, (seq_func, _) in enumerate(self._sequences):
+                adj_frames = []
+                for adj_index in [seq_index+o for o in [-1, 1]]:
+                    if not (0 <= adj_index < len(self._sequences)) or \
+                            not seq_frame_lists[adj_index] or \
+                            self._get_seq_type(adj_index) == 2:
+                        adj_frame = self._canvas
+                    else:
+                        frame_index = -1 if adj_index < seq_index else 0
+                        adj_frame = seq_frame_lists[adj_index][frame_index]
+                    adj_frames.append(adj_frame)
+
+                if self._get_seq_type(seq_index) == iter_seq_type:
+                    seq_frame_lists[seq_index].extend(seq_func(*tuple(adj_frames)[:iter_seq_type]))
+
+        # Apply Filters #
+
+        for seq_frames, seq_filters in zip(seq_frame_lists, self._filters):
+            for filt_func, window in seq_filters:
+                frame_window = tuple(int(m*len(seq_frames)) for m in window)
+                filt_frames = seq_frames[frame_window[0]:frame_window[1]]
+                new_frames = filt_func(filt_frames)
+
+        # Render Movie #
+
+        # TODO(JRC): Handle the case in which this function is called without
+        # any input sequences.
+
+        movie_dir = os.path.join(spa.output_dir, movie_name)
+        shutil.rmtree(movie_dir, True)
+        os.makedirs(movie_dir)
+
+        seq_paths = []
+        for seq_index, (_, duration) in enumerate(seq_frame_lists, self._sequences):
+            seq_path = os.path.join(movie_dir, '{0}-{1}.mp4'.format(movie_name, seq_index))
+            seq_tmpl = os.path.join(movie_dir, '{0}-{1}-%d.png'.format(movie_name, seq_index))
+            seq_fps = len(seq_frame_lists[seq_index]) / float(duration)
+
+            for frame_index, frame in enumerate(seq_frame_lists[seq_index]):
+                frame.save(os.path.join(movie_dir, seq_tmpl % frame_index))
+
+            seq_output = spa.ffmpeg_render(seq_path, seq_tmpl, fps=seq_fps)
+            if not seq_output: return False
+
+            seq_paths.append(seq_path)
+
+        movie_path = os.path.join(movie_dir, '{0}.mp4'.format(movie_name))
+        temp_path = os.path.join(movie_dir, '.{0}.mp4'.format(movie_name))
+
+        shutil.copy2(seq_paths[0], movie_path)
+        for seq_path in seq_paths[1:]:
+            seq_concat = spa.ffmpeg_concat(temp_path, movie_path, seq_path)
+            if not seq_concat: return False
+            shutil.copy2(temp_path, movie_path)
+
+        return True
 
     ### Helpers ###
 
-    # TODO(JRC): Remove this function once it's determined to be absolutely
-    # unnecessary with a different scheme for sequence/filter specification.
-    def _filter_args(in_args, in_kwargs, local_kwargs):
-        func_args = in_args[:]
-        func_kwargs = {k: v for k, v in in_kwargs.iteritems() if k not in local_kwargs}
-        local_kwargs = {k: in_kwargs.get(k, v) for k, v in local_kwargs.iteritems()}
-
-        return (func_args, func_kwargs, local_kwargs)
+    def _get_seq_type(index):
+        sequence = self._sequences[index][0]
+        return len(inspect.getargspec(sequence).args)
