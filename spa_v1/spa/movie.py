@@ -1,7 +1,7 @@
 __doc__ = '''Module for the Movie Class Implementation'''
 
 import os, sys, shutil, inspect
-import spa
+import spa, ffmpeg
 
 '''
 movie = spa.movie()
@@ -117,7 +117,7 @@ class movie():
             for frame_index, frame in enumerate(seq_frame_lists[seq_index]):
                 frame.save(os.path.join(movie_dir, seq_tmpl % frame_index))
 
-            seq_output = spa.ffmpeg_render(seq_path, seq_tmpl, fps=seq_fps)
+            seq_output = ffmpeg.render(seq_path, seq_tmpl, fps=seq_fps)
             if not seq_output: return False
 
             seq_paths.append(seq_path)
@@ -127,7 +127,7 @@ class movie():
 
         shutil.copy2(seq_paths[0], movie_path)
         for seq_path in seq_paths[1:]:
-            seq_concat = spa.ffmpeg_concat(temp_path, movie_path, seq_path)
+            seq_concat = ffmpeg.concat(temp_path, movie_path, seq_path)
             if not seq_concat: return False
             shutil.copy2(temp_path, movie_path)
 
