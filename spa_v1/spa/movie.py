@@ -3,42 +3,6 @@ __doc__ = '''Module for the Movie Class Implementation'''
 import os, sys, shutil, inspect
 import spa, ffmpeg
 
-'''
-movie = spa.movie()
-=> specify the first frame somehow (canvas frame or canvas spec)
-
-a movie is a series of sequences (e.g. 'sstroke', 'scale')
-that are optionally connected by transitions (e.g. fade)
-with an arbitrary number of overlayed filters (e.g. 'overlay')
-
-(note: transitions are a special form of sequences)
-
-sequence: f(start_frame, ...) => [image]
-transition: f(start_frame, end_frame, ...) => [image]
-filter: f([frame], ...) => [image] (can also modify the images in place)
-
-movie.add_sequence(seq_func, duration, *args, index=-1, **kwargs)
-=> when processed, this sequence will use the last frame of the previous sequence
-
-movie.add_transition(txn_func, duration, *args, index=-1, **kwargs)
-=> when processed, this sequence will use the last frame of the previous and the first of the next
-
-movie.add_filter(filter_func, duration, *args, index=-1, window=(x, y), **kwargs)
-=> when processed, this filter will be applied in replacing a piece of the sequence at the index in the given frame window
-
-spa.fx.sstroke(stroke_color=None, serial=False):
-
-movie = spa.movie(Image.new('RGBA', base_image.size, color=spa.color('white')))
-movie.add_sequence(spa.fx.sstroke, , base_image, )
-
-specify each sequence and how they're connected to form a pipeline
-then apply filters on top of subsequences
-
-movie.save('movie_name')
-=> this function will save out multiple movie files (one for each sequence)
-   and then stitch them together as a post-processing step (ffmpeg concat)
-'''
-
 ### Module Classes ###
 
 class movie():

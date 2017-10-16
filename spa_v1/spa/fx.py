@@ -70,8 +70,8 @@ def scale(scale_image, scale_func, scale_num_frames,
         frame_scale_2d = tuple(int(frame_scale*d) for d in canvas_image.size)
 
         frame_image = scale_image.resize(frame_scale_2d, resample=Image.BICUBIC)
+        frame_offset = imp.calc_alignment(scale_origin, canvas_image, frame_image)
         for frame_pixel in range(frame_image.width * frame_image.height):
-            frame_offset = imp.calc_alignment(scale_origin, canvas_image, frame_image)
             frame_pixel_2d = imp.to_2d(frame_pixel, frame_image)
             canvas_pixel_2d = tuple(d+dd for d, dd in zip(frame_pixel_2d, frame_offset))
             if (0 <= canvas_pixel_2d[0] < canvas_image.width and
@@ -83,8 +83,12 @@ def scale(scale_image, scale_func, scale_num_frames,
 
     return frame_images
 
-def pop(out_image):
+def pop(pop_image):
     pass
+
+def mirror(mirror_frames, keep_dup=False):
+    new_frames = [mf.copy() for mf in mirror_frames][0 if keep_dup else 1:][::-1]
+    return mirror_frames + new_frames
 
 def still(image, frame_count=1):
     return [image.copy() for i in range(frame_count)]
