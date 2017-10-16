@@ -1,6 +1,7 @@
 __doc__ = '''Module for the Image Effects Functionality'''
 
 import spa, imp
+from PIL import Image
 
 ### Module Functions ###
 
@@ -38,9 +39,9 @@ def sstroke(canvas_image, stroke_image, stroke_serial=False,
             stroke_fill = [[] for i in range(num_frames)]
 
             stroke_step = num_frames / float(len(stroke) - 1)
-            stroke_offsets = [stroke_step * si for si in range(len(stroke))]
-            for stroke_index, stroke_offset in enumerate(stroke_offsets):
-                adj_stroke_offset = min(int(stroke_offset), num_frames - 1)
+            stroke_offs = [stroke_step * si for si in range(len(stroke))]
+            for stroke_index, stroke_off in enumerate(stroke_offs):
+                adj_stroke_offset = min(int(stroke_off), num_frames - 1)
                 stroke_fill[adj_stroke_offset].append(stroke_index)
 
             stroke_fills.append(stroke_fill)
@@ -56,9 +57,31 @@ def sstroke(canvas_image, stroke_image, stroke_serial=False,
 
     return frame_images
 
-def scale(canvas_image, scale_func,
-        scale_origin=(spa.align.mid, spa.align.mid), fill_color=None):
-    pass
+def scale(scale_image, scale_func, scale_num_frames,
+        scale_origin=(spa.align.mid, spa.align.mid),
+        fill_color=spa.color('white')):
+    scale_canvas = Image.new('RGBA', scale_image.size, color=fill_color)
+
+    frame_images = []
+    for frame_index in range(scale_num_frames):
+        canvas_image = scale_canvas.copy()
+
+        frame_scale = scale_func(frame_index / max(scale_num_frames - 1.0, 1.0))
+        frame_scale_2d = tuple(int(frame_scale*d) for d in canvas_image.size)
+
+        frame_image = scale_image.resize(frame_scale_2d, resample=Image.BICUBIC)
+        for frame_pixel in range(frame_image.width * frame_image.height):
+            frame_offset = imp.calc_alignment(scale_origin, canvas_image, frame_image)
+            frame_pixel_2d = imp.to_2d(frame_pixel, frame_image)
+            canvas_pixel_2d = tuple(d+dd for d, dd in zip(frame_pixel_2d, frame_offset))
+            if (0 <= canvas_pixel_2d[0] < canvas_image.width and
+                    0 <= canvas_pixel_2d[1] < canvas_image.height):
+                frame_color = frame_image.getpixel(frame_pixel_2d)
+                canvas_image.putpixel(canvas_pixel_2d, frame_color)
+
+        frame_images.append(canvas_image)
+
+    return frame_images
 
 def pop(out_image):
     pass

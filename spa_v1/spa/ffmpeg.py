@@ -24,16 +24,16 @@ def ffmpeg(path, args):
     ffmpeg_args = ['ffmpeg']
 
     ffmpeg_args.extend(args)
-    ffmpeg_args.extend(['-r', 60, '-c:v', 'libx264', '-pix_fmt', 'yuv420p'])
+    ffmpeg_args.extend(['-r', 60, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y'])
 
     ffmpeg_args.extend(['-crf', 0 if quality else 22])
     ffmpeg_args.extend([] if debug else ['-loglevel', '-8'])
 
     ffmpeg_args.append(path)
 
-    ffmpeg_call = ' '.join(map(str, ffmpeg_args))
-    if debug: print ffmpeg_call
-    return subprocess.call(ffmpeg_call, shell=True) == 0
+    ffmpeg_call = map(str, ffmpeg_args)
+    if debug: print ' '.join(ffmpeg_call)
+    return subprocess.call(ffmpeg_call) == 0
 
 def render(path, template, fps=60.0):
     render_args = [
