@@ -6,9 +6,6 @@ TODO(JRC): The following list enumerates the big to-dos:
 
 === REQUIRED ===
 
-* Add progress notifications w/ timings to make it easier to track the code
-  and the effects that take the most time in the rendering step.
-  * Add 'show_progress' flag or something similar to the 'movie.render' function.
 * Add some form of flag or filter to make it possible to remove duplicate
   frames that occur in between sequences.
   * Desirable for the scaling transition in the intended final animation.
