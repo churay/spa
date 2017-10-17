@@ -1,6 +1,6 @@
 __doc__ = '''Module for SPA ((Sequential Picture Amalgamator)) Globals'''
 
-import os, sys, json, subprocess
+import os, sys, time, json, subprocess
 
 ### Module Constants ###
 
@@ -24,6 +24,9 @@ align = type('Enum', (), {'lo': -3, 'mid': -2, 'hi': -1})
 def color(name, opacity=255):
     color_tuple = colors.get(name, 'black')
     return (color_tuple[0], color_tuple[1], color_tuple[2], opacity)
+
+def clamp(value, min_value, max_value):
+    return max(min(value, max_value), min_value)
 
 def display_status(item, curr, total):
     sys.stdout.write('\r')
@@ -59,21 +62,40 @@ def cache(cache_id):
         return cache_func
     return cache_decorator
 
-# TODO(JRC): Make this really cool where the number of seconds since the
-# last log of the same level is reported.
+# TODO(JRC): Enhance this function with the IDs that print out the number consecutive
+# that this is on the same level.
 def log(func):
-    # TODO(JRC): Defer printing until the next thing is printed, or the function ends.
-    # Print out timings at the end (when the next thing appears)
-    # If we reach more than 1 down, then print the original call in quotations
-    # log(0) => log(1) => log(2) => log(0)
-    # log(0) => print out immediately
     log_stack = []
-    def do_log(text, indent=0): print '%s%s' % ('  ' * (indent + 1), text)
-    def skip_log(text, indent=0): pass
+    def do_log(text, level=1):
+        def print_top_log(is_start=False, is_end=False):
+            level = len(log_stack) - 1
+            level_text, level_start = log_stack[-1]
+            if is_end: log_stack.pop()
+
+            level_pad = '  ' * level
+            level_title = ' %s' % level_text if is_start else ''
+            level_timing = ' {%.2es}' % (time.clock() - level_start) if is_end else ''
+
+            print '%s[%d]%s%s' % (level_pad, level, level_title, level_timing)
+
+        level = clamp(level, 0, len(log_stack) + 1)
+        if log_stack and level >= len(log_stack):
+            print_top_log(is_start=True)
+        else:
+            for higher_index, higher_level in enumerate(range(level, len(log_stack))):
+                print_top_log(is_start=(higher_index == 0), is_end=True)
+
+        log_stack.append((text, time.clock()))
+    def skip_log(text, level=1):
+        pass
 
     def log_decorator(*args, **kwargs):
         setattr(log_decorator, 'log', do_log if kwargs.pop('log', False) else skip_log)
-        getattr(log_decorator, 'log')('Log for "%s" [[' % func.__name__, -1)
-        return func(*args, **kwargs)
+
+        log_decorator.log('Log for "%s"' % func.__name__, 0)
+        result = func(*args, **kwargs)
+        log_decorator.log('End for %s' % func.__name__, 0)
+
+        return result
 
     return log_decorator
