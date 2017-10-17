@@ -71,13 +71,7 @@ def scale(scale_image, scale_func, scale_num_frames,
 
         frame_image = scale_image.resize(frame_scale_2d, resample=Image.BICUBIC)
         frame_offset = imp.calc_alignment(scale_origin, canvas_image, frame_image)
-        for frame_pixel in range(frame_image.width * frame_image.height):
-            frame_pixel_2d = imp.to_2d(frame_pixel, frame_image)
-            canvas_pixel_2d = tuple(d+dd for d, dd in zip(frame_pixel_2d, frame_offset))
-            if (0 <= canvas_pixel_2d[0] < canvas_image.width and
-                    0 <= canvas_pixel_2d[1] < canvas_image.height):
-                frame_color = frame_image.getpixel(frame_pixel_2d)
-                canvas_image.putpixel(canvas_pixel_2d, frame_color)
+        canvas_image.paste(frame_image, frame_offset)
 
         frame_images.append(canvas_image)
 

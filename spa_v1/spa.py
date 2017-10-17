@@ -69,7 +69,7 @@ def main():
     movie.add_sequence(lambda pf: spa.fx.still(pf), 0.1)
     '''
 
-    assert movie.render('test'), 'Failed to render movie.'
+    assert movie.render('test', log=True), 'Failed to render movie.'
 
 ### Miscellaneous ###
 
