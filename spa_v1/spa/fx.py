@@ -69,7 +69,7 @@ def scale(scale_image, scale_func, scale_num_frames,
         frame_scale = scale_func(frame_index / max(scale_num_frames - 1.0, 1.0))
         frame_scale_2d = tuple(int(frame_scale*d) for d in canvas_image.size)
 
-        frame_image = scale_image.resize(frame_scale_2d, resample=Image.BICUBIC)
+        frame_image = scale_image.resize(frame_scale_2d, resample=Image.LANCZOS)
         frame_offset = imp.calc_alignment(scale_origin, canvas_image, frame_image)
         canvas_image.paste(frame_image, frame_offset)
 

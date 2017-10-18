@@ -6,9 +6,6 @@ TODO(JRC): The following list enumerates the big to-dos:
 
 === REQUIRED ===
 
-* Add some form of flag or filter to make it possible to remove duplicate
-  frames that occur in between sequences.
-  * Desirable for the scaling transition in the intended final animation.
 * Implement the 'fx.overlay' function.
 * Implement the 'fx.pop' function.
 * Implement the 'fx.fade' transition function.
@@ -27,28 +24,28 @@ from PIL import Image
 ### Main Entry Point ###
 
 def main():
-    base_image = Image.open(os.path.join(spa.input_dir, 'test2.png'))#'silhouette.png'))
+    base_image = Image.open(os.path.join(spa.input_dir, 'silhouette_small.png'))#'silhouette.png'))
     over_image = Image.open(os.path.join(spa.input_dir, 'overlay.png'))
-    # TODO(JRC): Scale this image based on the scaling factor that will
-    # be used for the pop effect.
     out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
+    #out_image = Image.new('RGBA', tuple(int(1.5*d) for d in base_image.size), color=spa.color('white'))
 
     movie = spa.movie(out_image)
 
     # Current Test #
 
     movie.add_sequence(lambda pf: spa.fx.still(base_image), 0.1)
-    movie.add_sequence(lambda pf: spa.fx.scale(pf, lambda fu: 1 - 2*fu + 2*fu**2, 60), 1.0)
-    movie.add_sequence(lambda pf: spa.fx.scale(pf, lambda fu: 1 + 2*(0.5*fu) - 2*(0.5*fu)**2, 60), 1.0/2.0)
+    movie.add_sequence(lambda pf: spa.fx.scale(pf, lambda fu: 1 - 2*fu + 2*fu**2, 30), 0.5)
+    movie.add_sequence(lambda pf: spa.fx.scale(pf, lambda fu: 1 + 2*(0.5*fu) - 2*(0.5*fu)**2, 30), 0.5/2.0)
     movie.add_sequence(lambda pf: spa.fx.still(pf), 0.1)
 
     # Mock Final #
 
     '''
-    movie.add_sequence(lambda pf: spa.fx.sstroke(pf, base_image, stroke_color=spa.color('black'), stroke_serial=False), 3.0)
-    movie.add_sequence(lambda pf: spa.fx.scale(pf, lambda fu: 1 - 2*fu + 2*fu**2, 30), (1.0/2.5))
-    movie.add_sequence(lambda pf: spa.fx.scale(pf, lambda fu: 1 + 2*(0.5*fu) - 2*(0.5*fu)**2, 30), (1.0/2.5)/2.0)
-    movie.add_sequence(lambda pf: spa.fx.scale(pf, lambda fi: 1.0, 100), 3.0)
+    # TODO(JRC): Refine the scaling function as it doesn't currently feel like
+    # it "pops" enough during its shrinking/growing animation.
+    movie.add_sequence(lambda pf: spa.fx.sstroke(pf, base_image, stroke_color=spa.color('black'), stroke_serial=False), 2.0)
+    movie.add_sequence(lambda pf: spa.fx.scale(pf, lambda fu: 1 - 0.38*math.sin(1.5*math.pi*fu), 30), 0.5)
+    movie.add_sequence(lambda pf: spa.fx.still(pf), 0.1)
     '''
 
     # Basic Test #
@@ -66,7 +63,10 @@ def main():
     movie.add_sequence(lambda pf: spa.fx.still(pf), 0.1)
     '''
 
-    assert movie.render('test', log=True), 'Failed to render movie.'
+    render_opts = {
+        'log': True,
+        'smooth_seams': True }
+    assert movie.render('test', **render_opts), 'Failed to render movie.'
 
 ### Miscellaneous ###
 

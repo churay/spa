@@ -33,8 +33,9 @@ class movie():
         self._filters[index].pop(subindex)
 
     @spa.log
-    def render(self, movie_name):
+    def render(self, movie_name, **kwargs):
         fself = movie.render
+        smooth_seams = kwargs.get('smooth_seams', False)
 
         # NOTE(JRC): Processing one sequence type per loop allows the sequences
         # to be processed before the transitions.
@@ -66,6 +67,12 @@ class movie():
                 frame_window = tuple(int(m*len(seq_frames)) for m in window)
                 filt_frames = seq_frames[frame_window[0]:frame_window[1]]
                 new_frames = filt_func(filt_frames)
+
+        if smooth_seams:
+            fself.log('Smoothing Sequence Seams', 1)
+            for prev_frames, curr_frames in zip(seq_frame_lists, seq_frame_lists[1:]):
+                if prev_frames[-1].tobytes() == curr_frames[0].tobytes():
+                    prev_frames.pop()
 
         fself.log('Rendering Movie', 1)
 
