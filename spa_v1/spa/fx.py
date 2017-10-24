@@ -10,7 +10,7 @@ from PIL import Image
 def sstroke(canvas_image, stroke_image, stroke_serial=False,
         stroke_offset=(spa.align.mid, spa.align.mid), stroke_color=None):
     stroke_offset = imp.calc_alignment(stroke_offset, canvas_image, stroke_image)
-    to_canvas = lambda sp: tuple(d+dd for d, dd in zip(sp, stroke_offset))
+    to_canvas = lambda sp: spa.vecop(sp, stroke_offset)
 
     stroke_cells = imp.calc_opaque_cells(stroke_image)
     stroke_bounds = imp.calc_cell_boundaries(stroke_image, stroke_cells)
@@ -31,22 +31,7 @@ def sstroke(canvas_image, stroke_image, stroke_serial=False,
     else:
         num_frames = max(len(sl) for sl in strokes)
 
-        # TODO(JRC): Refactor this piece a bit to make it more efficient
-        # (eliminte the need for disposing so many lists by using something
-        # like a number list that indicates how many boundaries need to filled
-        # on the current frame).
-        stroke_fills = []
-        for stroke in strokes:
-            stroke_fill = [[] for i in range(num_frames)]
-
-            stroke_step = num_frames / float(len(stroke) - 1)
-            stroke_offs = [stroke_step * si for si in range(len(stroke))]
-            for stroke_index, stroke_off in enumerate(stroke_offs):
-                adj_stroke_offset = min(int(stroke_off), num_frames - 1)
-                stroke_fill[adj_stroke_offset].append(stroke_index)
-
-            stroke_fills.append(stroke_fill)
-
+        stroke_fills = [spa.distribute(len(s), num_frames) for s in strokes]
         for frame_index in range(num_frames):
             frame_image = frame_images[-1].copy()
             for stroke, stroke_fill in zip(strokes, stroke_fills):
@@ -80,33 +65,45 @@ def scale(scale_image, scale_func, scale_num_frames,
 
 # TODO(JRC): As the contours, pass the largest of each list (outermost contours
 # of each cell) as a single-level list.
-# TODO(JRC): Scale the stencil appropriately based on the size of the source image.
 def pop(pop_image, pop_contours, pop_per_pixel, pop_num_frames,
         pop_stencil=None, pop_seed=None):
-    # TODO(JRC): Determine which contours are cyclic and which are not.
-    # TODO(JRC): Create the pop frame by stamping all of the stencils into
-    # the proper locations on the canvas.
     pop_rng = random.seed(pop_seed)
 
-    # TODO(JRC): Implement the algorithm outlined by the following pseudocode:
-    # for each contour, figure out the contour metadata
-    # -> open/closed contour?
-    # -> direction of rotation for normal (based on open/closed, CW/CCW)
-    #
-    # generate all of the pop particles and their initial velocities (based on normal)
-    # -> number of particles based on pop_per_pixel, calculate per boundary and then distribute randomly using rng
-    # -> need 'imp.normal' function (calculate normal of contour)
-    #
-    # simulate the particles for the given number of frames
+    # TODO(JRC): Scale the stencil appropriately based on the size of the source image.
+    pass
+
+    pop_particles = []
+    for contour in pop_contours:
+        contour_normal_rotation = tuple(
+            1 if imp.calc_orientation(contour, pop_image) == spa.orient.ccw else -1
+            for i in range(2))
+        contour_distrib = spa.distribute(
+            int(len(contour) * pop_per_pixel), len(contour), bucket_limit=1)
+
+        contour_particles = []
+        for pixel_index, pixel_particles in enumerate(contour_distrib):
+            if not pixel_particles: continue
+
+            pixel_tangent = spa.vecop(
+                imp.to_2d(contour[pixel_index-2], pop_image),
+                imp.to_2d(contour[pixel_index+2], pop_image),
+                vecop=lambda l, r: l - r)
+            pixel_normal = spa.vecop(
+                (pixel_tangent[1], -pixel_tangent[0]),
+                contour_normal_rotation,
+                vecop=lambda l, r: l * r)
+
+            # TODO(JRC): Generate the randomized velocity (small perturbation to
+            # the normal) and the rotation (random rotation amount between ranges).
+
+            contour_particles.append((contour[pixel_index], None, None))
+
+        pop_particles.extend(contour_particles)
+
+    # TODO(JRC): Simulate the particles for the given number of frames
     # -> fade in and out during this whole process (fading interpolation function is some easing function)
-    # -> apply torque and velocity to each particle (?) using RNG to vary values
-
-    pass
-
-    for pop_contour in pop_contours:
-        pass
-
-    pass
+    # -> apply and velocity to each particle (?) using RNG to vary values
+    # -> create the pop frame by stamping all of the stencils into the proper locations on the canvas.
 
 def still(image, frame_count=1):
     return [image.copy() for i in range(frame_count)]

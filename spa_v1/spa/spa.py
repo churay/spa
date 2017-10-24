@@ -1,6 +1,6 @@
 __doc__ = '''Module for SPA ((Sequential Picture Amalgamator)) Globals'''
 
-import os, sys, time, json, subprocess
+import os, sys, collections, time, json, subprocess
 
 ### Module Constants ###
 
@@ -22,12 +22,38 @@ orient = type('Enum', (), {'none': 0, 'cw': 1, 'ccw': 2})
 
 ### Module Functions ###
 
+def clamp(value, min_value, max_value):
+    return max(min(value, max_value), min_value)
+
+def distribute(num_items, num_buckets, bucket_limit=float('inf')):
+    assert num_items * bucket_limit >= num_buckets, 'Not enough space for items.'
+
+    buckets = [collections.deque() for b in range(num_buckets)]
+    def add_to_bucket(item, bucket_index, fill_dir=None):
+        fill_dir = fill_dir or (1 if bucket_index < num_buckets / 2 else -1)
+        bucket = buckets[bucket_index]
+
+        bucket.append(item)
+        if len(bucket) > bucket_limit:
+            evicted_item = bucket.popleft()
+            adjacent_bucket_index = bucket_index + fill_dir
+            add_to_bucket(evicted_item, adjacent_bucket_index, fill_dir=fill_dir)
+
+    uniform_step = num_buckets / (num_items - 1.0)
+    uniform_offsets = [uniform_step * si for si in range(num_items)]
+    for item, offset in enumerate(uniform_offsets):
+        bucket_index = min(int(offset), num_buckets - 1)
+        add_to_bucket(item, bucket_index)
+
+    # return [list(b) if bucket_limit != 1 else b.pop() for b in buckets]
+    return [list(b) for b in buckets]
+
 def color(name, opacity=255):
     color_tuple = colors.get(name, 'black')
     return (color_tuple[0], color_tuple[1], color_tuple[2], opacity)
 
-def clamp(value, min_value, max_value):
-    return max(min(value, max_value), min_value)
+def vecop(lhs, rhs, op=lambda l, r: l+r):
+    return tuple(vecop(l, r) for l, r in zip(lhs, rhs))
 
 def display_status(item, curr, total):
     sys.stdout.write('\r')
