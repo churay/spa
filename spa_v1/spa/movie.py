@@ -68,11 +68,15 @@ class movie():
                 filt_frames = seq_frames[frame_window[0]:frame_window[1]]
                 new_frames = filt_func(filt_frames)
 
+        '''
+        # TODO(JRC): Fix a bug in this code that causes sequences with singular
+        # frames to be deleted when adjacent to sequences with duplicates.
         if smooth_seams:
             fself.log('Smoothing Sequence Seams', 1)
             for prev_frames, curr_frames in zip(seq_frame_lists, seq_frame_lists[1:]):
                 if prev_frames[-1].tobytes() == curr_frames[0].tobytes():
                     prev_frames.pop()
+        '''
 
         fself.log('Rendering Movie', 1)
 

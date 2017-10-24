@@ -57,6 +57,23 @@ def calc_alignment(align_coords, image, subimage=None):
 
     return tuple(output_coords)
 
+# TODO(JRC): This algorithm implements the "Shoelace Formula," which I should
+# learn how to prove works to myself.
+def calc_orientation(boundary, image):
+    bound_orient = None
+
+    if boundary[0] not in calc_adjacent(boundary[-1], image):
+        bound_orient = spa.orient.none
+    else:
+        boundary_2d = [to_2d(bp, image) for bp in boundary]
+        boundary_shoelace = zip(boundary_2d, boundary_2d[1:] + [boundary_2d[0]])
+        boundary_orient = (
+            sum(p0[0]*p1[1] for p0, p1 in boundary_shoelace) -
+            sum(p1[0]*p0[1] for p0, p1 in boundary_shoelace))
+        bound_orient = spa.orient.cw if boundary_orient < 0 else spa.orient.ccw
+
+    return bound_orient
+
 def is_cell_boundary(curr_pixel, next_pixel, image):
     curr_alpha = image.getpixel(to_2d(curr_pixel, image))[3]
     next_alpha = image.getpixel(to_2d(next_pixel, image))[3]
@@ -133,16 +150,6 @@ def calc_cell_strokes(image, boundaries):
                 if adj_stroke is not None: return adj_stroke + [curr_pixel]
             return None
 
-    # TODO(JRC): This is calculated using the shoelace formula, which I
-    # should read more about to understand how it works.
-    def calc_stroke_orient(stroke):
-        stroke_2d = [to_2d(sp, image) for sp in stroke]
-        stroke_zip = zip(stroke_2d, stroke_2d[1:] + [stroke_2d[0]])
-
-        stroke_orient = sum(p0[0]*p1[1] for p0, p1 in stroke_zip) - \
-            sum(p1[0]*p0[1] for p0, p1 in stroke_zip)
-        return stroke_orient < 0
-
     strokes = []
 
     for boundary_list in boundaries:
@@ -189,9 +196,10 @@ def calc_cell_strokes(image, boundaries):
                 orient_index = stroke_pixels.index(orient_pixel)
                 stroke_pixels = stroke_pixels[orient_index:] + stroke_pixels[:orient_index]
 
-                orient_dir = image.getpixel(to_2d(orient_pixel, image))[3] == 255
-                curr_dir = calc_stroke_orient(stroke_pixels)
-                if orient_dir != curr_dir: stroke_pixels.reverse()
+                orient_alpha = image.getpixel(to_2d(orient_pixel, image))[3]
+                want_orient = spa.orient.cw if orient_alpha == 255 else spa.orient.ccw
+                curr_orient = calc_orientation(stroke_pixels, image)
+                if curr_orient != want_orient : stroke_pixels.reverse()
 
             stroke_list.append(stroke_pixels)
         strokes.append(stroke_list)

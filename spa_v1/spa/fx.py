@@ -1,5 +1,6 @@
 __doc__ = '''Module for the Image Effects Functionality'''
 
+import random
 import spa, imp
 from PIL import Image
 
@@ -77,12 +78,35 @@ def scale(scale_image, scale_func, scale_num_frames,
 
     return frame_images
 
-def pop(pop_image):
+# TODO(JRC): As the contours, pass the largest of each list (outermost contours
+# of each cell) as a single-level list.
+# TODO(JRC): Scale the stencil appropriately based on the size of the source image.
+def pop(pop_image, pop_contours, pop_per_pixel, pop_num_frames,
+        pop_stencil=None, pop_seed=None):
+    # TODO(JRC): Determine which contours are cyclic and which are not.
+    # TODO(JRC): Create the pop frame by stamping all of the stencils into
+    # the proper locations on the canvas.
+    pop_rng = random.seed(pop_seed)
+
+    # TODO(JRC): Implement the algorithm outlined by the following pseudocode:
+    # for each contour, figure out the contour metadata
+    # -> open/closed contour?
+    # -> direction of rotation for normal (based on open/closed, CW/CCW)
+    #
+    # generate all of the pop particles and their initial velocities (based on normal)
+    # -> number of particles based on pop_per_pixel, calculate per boundary and then distribute randomly using rng
+    # -> need 'imp.normal' function (calculate normal of contour)
+    #
+    # simulate the particles for the given number of frames
+    # -> fade in and out during this whole process (fading interpolation function is some easing function)
+    # -> apply torque and velocity to each particle (?) using RNG to vary values
+
     pass
 
-def mirror(mirror_frames, keep_dup=False):
-    new_frames = [mf.copy() for mf in mirror_frames][0 if keep_dup else 1:][::-1]
-    return mirror_frames + new_frames
+    for pop_contour in pop_contours:
+        pass
+
+    pass
 
 def still(image, frame_count=1):
     return [image.copy() for i in range(frame_count)]

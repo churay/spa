@@ -18,6 +18,7 @@ colors = {
 }
 
 align = type('Enum', (), {'lo': -3, 'mid': -2, 'hi': -1})
+orient = type('Enum', (), {'none': 0, 'cw': 1, 'ccw': 2})
 
 ### Module Functions ###
 
