@@ -67,7 +67,7 @@ def main():
     # Pop Test #
 
     movie.add_sequence(lambda pf: spa.fx.still(base_image), 0.1)
-    movie.add_sequence(lambda pf: spa.fx.pop(pf, pf, 30, pop_per_pixel=0.1), 0.5)
+    movie.add_sequence(lambda pf: spa.fx.pop(pf, pf, 60, pop_per_pixel=0.05), 1.0)
     movie.add_sequence(lambda pf: spa.fx.still(pf), 0.1)
 
     render_opts = {

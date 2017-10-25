@@ -69,7 +69,6 @@ def pop(canvas_image, pop_image, pop_num_frames,
         pop_offset=(spa.align.mid, spa.align.mid),
         pop_per_pixel=1.0/5.0, pop_stencil=None, pop_seed=None):
     pop_offset = imp.calc_alignment(pop_offset, canvas_image, pop_image)
-    to_canvas = lambda pp: spa.vecop(pp, pop_offset)
 
     pop_stencil = pop_stencil or \
         Image.open(os.path.join(spa.input_dir, 'stencil_default.png'))
@@ -90,11 +89,15 @@ def pop(canvas_image, pop_image, pop_num_frames,
     stencil_area = reduce(lambda a, n: a*n, stencil_bbox[2:], 1.0)
     contour_min_area = reduce(lambda a, n: a*n, contour_min_bbox[2:], 1.0)
 
-    # stencil_target_frac = 0.05
-    # stencil_curr_frac = stencil_area / contour_min_area
+    # TODO(JRC): Consider using this alternative based on minimum contour size
+    # if it can be fixed.
+    '''
+    stencil_target_frac = 0.05
+    stencil_curr_frac = stencil_area / contour_min_area
 
-    # stencil_scale = stencil_target_frac / stencil_curr_frac
-    # stencil_scale_2d = tuple(int(stencil_scale*d) for d in pop_stencil.size)
+    stencil_scale = stencil_target_frac / stencil_curr_frac
+    stencil_scale_2d = tuple(int(stencil_scale*d) for d in pop_stencil.size)
+    '''
     stencil_scale_2d = tuple(int(0.05*d) for d in canvas_image.size)
     pop_stencil = pop_stencil.resize(stencil_scale_2d, resample=Image.LANCZOS)
 
@@ -103,7 +106,7 @@ def pop(canvas_image, pop_image, pop_num_frames,
     pop_particles = []
     for contour in pop_contours:
         contour_normal_rotation = tuple(
-            1 if imp.calc_orientation(contour, pop_image) == spa.orient.ccw else -1
+            -1 if imp.calc_orientation(contour, pop_image) == spa.orient.ccw else 1
             for i in range(2))
         contour_distrib = spa.distribute(
             int(len(contour) * pop_per_pixel), len(contour), bucket_limit=1)
@@ -143,6 +146,10 @@ def pop(canvas_image, pop_image, pop_num_frames,
     # -> apply and velocity to each particle
     # -> create the pop frame by stamping all of the stencils into the proper locations on the canvas.
     alpha_func = lambda fu: 0 + 4*fu - 4*fu**2
+    to_canvas = lambda pp: spa.vecop(
+        spa.vecop(pp, pop_offset),
+        imp.calc_alignment((spa.align.mid, spa.align.mid), pop_stencil),
+        op=lambda l, r: l-r)
 
     frame_images = []
     for frame_index in range(pop_num_frames):
@@ -158,11 +165,8 @@ def pop(canvas_image, pop_image, pop_num_frames,
         stencil_image.putalpha(alpha_image)
 
         for particle in pop_particles:
-            # particle_image = stencil_image.copy()
-            # particle_image.rotate(particle[1], resample=Image.BILINEAR)
-
-            particle_offset = spa.vecop(pop_offset, particle[0])
-            frame_image.paste(stencil_image, particle_offset)
+            particle_image = stencil_image.rotate(particle[1], resample=Image.BILINEAR)
+            frame_image.paste(particle_image, to_canvas(particle[0]))
 
             particle[0] = spa.vecop(particle[0], particle[2])
             particle[1] += particle[3]
