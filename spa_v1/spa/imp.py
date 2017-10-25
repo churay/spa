@@ -106,6 +106,15 @@ def calc_connected_components(image, pixel_set, are_adjacent):
 
     return components
 
+def calc_connected_bbox(image, component):
+    component_2d = [to_2d(p, image) for p in component]
+
+    component_min = tuple(min(p[d] for p in component_2d) for d in range(2))
+    component_max = tuple(max(p[d] for p in component_2d) for d in range(2))
+
+    return (component_min[0], component_min[1],
+        component_max[0]-component_min[0], component_max[1]-component_min[1])
+
 @spa.cache('comps')
 def calc_opaque_cells(image):
     opaque_pixels = set(p for p in range(image.width * image.height) if

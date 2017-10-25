@@ -26,7 +26,7 @@ def clamp(value, min_value, max_value):
     return max(min(value, max_value), min_value)
 
 def distribute(num_items, num_buckets, bucket_limit=float('inf')):
-    assert num_items * bucket_limit >= num_buckets, 'Not enough space for items.'
+    assert num_items <= num_buckets * bucket_limit, 'Not enough space for items.'
 
     buckets = [collections.deque() for b in range(num_buckets)]
     def add_to_bucket(item, bucket_index, fill_dir=None):
@@ -53,7 +53,7 @@ def color(name, opacity=255):
     return (color_tuple[0], color_tuple[1], color_tuple[2], opacity)
 
 def vecop(lhs, rhs, op=lambda l, r: l+r):
-    return tuple(vecop(l, r) for l, r in zip(lhs, rhs))
+    return tuple(op(l, r) for l, r in zip(lhs, rhs))
 
 def display_status(item, curr, total):
     sys.stdout.write('\r')
