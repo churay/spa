@@ -81,24 +81,12 @@ def pop(canvas_image, pop_image, pop_num_frames,
 
     # Scale Stencil to Fit Contours #
 
-    stencil_bbox = (0, 0, pop_stencil.width, pop_stencil.height)
     contour_min_bbox = sorted(
         [imp.calc_connected_bbox(pop_image, c) for c in pop_contours],
         key=lambda bb: bb[2]*bb[3])[0]
+    contour_min_dim = min(contour_min_bbox)
 
-    stencil_area = reduce(lambda a, n: a*n, stencil_bbox[2:], 1.0)
-    contour_min_area = reduce(lambda a, n: a*n, contour_min_bbox[2:], 1.0)
-
-    # TODO(JRC): Consider using this alternative based on minimum contour size
-    # if it can be fixed.
-    '''
-    stencil_target_frac = 0.05
-    stencil_curr_frac = stencil_area / contour_min_area
-
-    stencil_scale = stencil_target_frac / stencil_curr_frac
-    stencil_scale_2d = tuple(int(stencil_scale*d) for d in pop_stencil.size)
-    '''
-    stencil_scale_2d = tuple(int(0.05*d) for d in canvas_image.size)
+    stencil_scale_2d = tuple(int(0.2*contour_min_dim) for d in range(2))
     pop_stencil = pop_stencil.resize(stencil_scale_2d, resample=Image.LANCZOS)
 
     # Generate Contour Particles #
@@ -114,7 +102,6 @@ def pop(canvas_image, pop_image, pop_num_frames,
         contour_particles = []
         for pixel_index, pixel_particles in enumerate(contour_distrib):
             if not pixel_particles: continue
-
             pixel_angle = 0
 
             # TODO(JRC): Generate the randomized velocity (small perturbation to
@@ -123,10 +110,13 @@ def pop(canvas_image, pop_image, pop_num_frames,
             # There should probably be some consideration made toward really low
             # velocity values so that accumulations happen and jumps only occur
             # when the proper threshold is reached.
-            pixel_tangent = spa.vecop(
-                imp.to_2d(contour[(pixel_index-2)], pop_image),
-                imp.to_2d(contour[(pixel_index+2)%len(contour)], pop_image),
-                op=lambda l, r: l - r)
+            # TODO(JRC): Clean up this average tangent calculation function.
+            pixel_tangent_samples = [spa.vecop(
+                imp.to_2d(contour[(pixel_index-o)], pop_image),
+                imp.to_2d(contour[(pixel_index+o)%len(contour)], pop_image),
+                op=lambda l, r: l - r) for o in range(1, 5)]
+            pixel_tangent = tuple(sum((pts[d] for pts in pixel_tangent_samples), 0.0) / len(pixel_tangent_samples) for d in range(2))
+
             pixel_normal = spa.vecop(
                 (pixel_tangent[1], -pixel_tangent[0]),
                 contour_normal_rotation,
@@ -149,7 +139,7 @@ def pop(canvas_image, pop_image, pop_num_frames,
     to_canvas = lambda pp: spa.vecop(
         spa.vecop(pp, pop_offset),
         imp.calc_alignment((spa.align.mid, spa.align.mid), pop_stencil),
-        op=lambda l, r: l-r)
+        op=lambda l, r: int(l-r))
 
     frame_images = []
     for frame_index in range(pop_num_frames):
