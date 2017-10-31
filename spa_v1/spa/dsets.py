@@ -4,7 +4,7 @@ import collections
 
 ### Module Classes ###
 
-class dsets():
+class dsets(object):
     ### Constructors ###
 
     def __init__(self, size):

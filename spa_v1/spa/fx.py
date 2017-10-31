@@ -1,8 +1,8 @@
 __doc__ = '''Module for the Image Effects Functionality'''
 
-import os, random
-import math, collections
+import os, random, math, collections
 import spa, imp
+from vector import vector
 from PIL import Image
 
 ### Module Functions ###
@@ -10,13 +10,13 @@ from PIL import Image
 # TODO(JRC): Add support for stencils.
 def sstroke(canvas_image, stroke_image,
         stroke_serial=False,
-        stroke_offset=(spa.align.mid, spa.align.mid),
+        stroke_offset=vector(2, spa.align.mid),
         stroke_color=None,
         **kwargs):
     # NOTE(JRC): This function doesn't use FX time data because the scaling can
     # be handled during the FFMPEG export and the effect is time agnostic.
     stroke_offset = imp.calc_alignment(stroke_offset, canvas_image, stroke_image)
-    to_canvas = lambda sp: spa.vecop(sp, stroke_offset)
+    to_canvas = lambda sp: (sp + stroke_offset).dvals
 
     stroke_cells = imp.calc_opaque_cells(stroke_image)
     stroke_bounds = imp.calc_cell_boundaries(stroke_image, stroke_cells)
@@ -49,7 +49,7 @@ def sstroke(canvas_image, stroke_image,
     return frame_images
 
 def scale(scale_image, scale_func,
-        scale_origin=(spa.align.mid, spa.align.mid),
+        scale_origin=vector(2, spa.align.mid),
         fill_color=spa.color('white'),
         **kwargs):
     ffx = _get_fxdata(**kwargs)
@@ -65,7 +65,7 @@ def scale(scale_image, scale_func,
 
         frame_image = scale_image.resize(frame_scale_2d, resample=Image.LANCZOS)
         frame_offset = imp.calc_alignment(scale_origin, canvas_image, frame_image)
-        canvas_image.paste(frame_image, frame_offset)
+        canvas_image.paste(frame_image, frame_offset.dvals)
 
         frame_images.append(canvas_image)
 
@@ -73,7 +73,9 @@ def scale(scale_image, scale_func,
 
 def pop(canvas_image, pop_image,
         pop_offset=(spa.align.mid, spa.align.mid),
-        pop_per_pixel=1.0/5.0,
+        pop_per_pixel=1.0/5.0,          # units: unit / pixel
+        pop_velocity=vector(2, 5e-1),   # units: screen % / second
+        pop_rotation=vector(2, 60),     # units: degrees / second
         pop_stencil=None,
         pop_seed=None,
         **kwargs):
@@ -120,13 +122,7 @@ def pop(canvas_image, pop_image,
             # There should probably be some consideration made toward really low
             # velocity values so that accumulations happen and jumps only occur
             # when the proper threshold is reached.
-            # TODO(JRC): Clean up this average tangent calculation function.
-            pixel_tangent_samples = [spa.vecop(
-                imp.to_2d(contour[(pixel_index-o)], pop_image),
-                imp.to_2d(contour[(pixel_index+o)%len(contour)], pop_image),
-                op=lambda l, r: l - r) for o in range(1, 5)]
-            pixel_tangent = tuple(sum((pts[d] for pts in pixel_tangent_samples), 0.0) / len(pixel_tangent_samples) for d in range(2))
-
+            pixel_tangent = imp.calc_tangent(contour, pixel_index, pop_image)
             pixel_normal = spa.vecop(
                 (pixel_tangent[1], -pixel_tangent[0]),
                 contour_normal_rotation,

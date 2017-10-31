@@ -2,6 +2,7 @@ __doc__ = '''Module for the Image Processing Functionality'''
 
 import sys, colorsys
 import spa
+from vector import vector
 
 # TODO(JRC): Do an audit of the names in this function and make improvements
 # where necessary.
@@ -38,24 +39,23 @@ def calc_adjacent(pixel, image):
 
 # TODO(JRC): Consider adding support for alignment by percentages as well.
 def calc_alignment(align_coords, image, subimage=None):
-    output_coords = []
+    out_coords = vector(2)
 
     for align_idx, align_coord in enumerate(align_coords):
         if align_coord == spa.align.lo:
-            output_coord = 0
+            out_coords[align_index] = 0
         elif align_coord == spa.align.mid:
             image_coord = image.size[align_idx] / 2
             subimage_adjust = subimage.size[align_idx] / 2 if subimage else 0
-            output_coord = image_coord - subimage_adjust
+            out_coords[align_index] = image_coord - subimage_adjust
         elif align_coord == spa.align.hi:
             image_coord = image.size[align_idx] - 1
             subimage_adjust = subimage.size[align_idx] if subimage else 0
-            output_coord = image_coord - subimage_adjust
+            out_coords[align_index] = image_coord - subimage_adjust
         else:
-            output_coord = align_coord
-        output_coords.append(output_coord)
+            out_coords[align_index] = align_coord
 
-    return tuple(output_coords)
+    return out_coords
 
 # TODO(JRC): This algorithm implements the "Shoelace Formula," which I should
 # learn how to prove works to myself.
@@ -73,6 +73,20 @@ def calc_orientation(boundary, image):
         bound_orient = spa.orient.cw if boundary_orient < 0 else spa.orient.ccw
 
     return bound_orient
+
+# TODO(JRC): Improve this method by using a neighborhood curve approximation
+# technique based on point fitting.
+def calc_tangent(boundary, index, image):
+    tangent_samples = [spa.vecop(
+        to_2d(contour[(index-i)], image),
+        to_2d(contour[(index+i)%len(boundary)], image),
+        op=lambda l, r: l - r) for i in range(1, 6)]
+
+    tangent_average = tuple(
+        sum(s[d] for s in tangent_samples) / len(tangent_samples)
+        for d in range(2))
+
+    return tangent_average
 
 def is_cell_boundary(curr_pixel, next_pixel, image):
     curr_alpha = image.getpixel(to_2d(curr_pixel, image))[3]

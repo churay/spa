@@ -52,9 +52,6 @@ def color(name, opacity=255):
     color_tuple = colors.get(name, 'black')
     return (color_tuple[0], color_tuple[1], color_tuple[2], opacity)
 
-def vecop(lhs, rhs, op=lambda l, r: l+r):
-    return tuple(op(l, r) for l, r in zip(lhs, rhs))
-
 def display_status(item, curr, total):
     sys.stdout.write('\r')
     sys.stdout.write('  processing %s %d/%d...' % (item, curr+1, total))

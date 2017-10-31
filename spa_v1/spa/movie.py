@@ -5,7 +5,7 @@ import spa, ffmpeg
 
 ### Module Classes ###
 
-class movie():
+class movie(object):
     ### Constructors ###
 
     def __init__(self, canvas):
