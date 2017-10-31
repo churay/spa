@@ -1,14 +1,20 @@
 __doc__ = '''Module for the Image Effects Functionality'''
 
 import os, random
+import math, collections
 import spa, imp
 from PIL import Image
 
 ### Module Functions ###
 
 # TODO(JRC): Add support for stencils.
-def sstroke(canvas_image, stroke_image, stroke_serial=False,
-        stroke_offset=(spa.align.mid, spa.align.mid), stroke_color=None):
+def sstroke(canvas_image, stroke_image,
+        stroke_serial=False,
+        stroke_offset=(spa.align.mid, spa.align.mid),
+        stroke_color=None,
+        **kwargs):
+    # NOTE(JRC): This function doesn't use FX time data because the scaling can
+    # be handled during the FFMPEG export and the effect is time agnostic.
     stroke_offset = imp.calc_alignment(stroke_offset, canvas_image, stroke_image)
     to_canvas = lambda sp: spa.vecop(sp, stroke_offset)
 
@@ -30,7 +36,6 @@ def sstroke(canvas_image, stroke_image, stroke_serial=False,
                 frame_images.append(frame_image)
     else:
         num_frames = max(len(sl) for sl in strokes)
-
         stroke_fills = [spa.distribute(len(s), num_frames) for s in strokes]
         for frame_index in range(num_frames):
             frame_image = frame_images[-1].copy()
@@ -43,16 +48,19 @@ def sstroke(canvas_image, stroke_image, stroke_serial=False,
 
     return frame_images
 
-def scale(scale_image, scale_func, scale_num_frames,
+def scale(scale_image, scale_func,
         scale_origin=(spa.align.mid, spa.align.mid),
-        fill_color=spa.color('white')):
+        fill_color=spa.color('white'),
+        **kwargs):
+    ffx = _get_fxdata(**kwargs)
+
     scale_canvas = Image.new('RGBA', scale_image.size, color=fill_color)
 
     frame_images = []
-    for frame_index in range(scale_num_frames):
+    for frame_index in range(ffx.fcount):
         canvas_image = scale_canvas.copy()
 
-        frame_scale = scale_func(frame_index / max(scale_num_frames - 1.0, 1.0))
+        frame_scale = scale_func(frame_index / max(ffx.fcount - 1.0, 1.0))
         frame_scale_2d = tuple(int(frame_scale*d) for d in canvas_image.size)
 
         frame_image = scale_image.resize(frame_scale_2d, resample=Image.LANCZOS)
@@ -63,13 +71,15 @@ def scale(scale_image, scale_func, scale_num_frames,
 
     return frame_images
 
-# TODO(JRC): As the contours, pass the largest of each list (outermost contours
-# of each cell) as a single-level list.
-def pop(canvas_image, pop_image, pop_num_frames,
+def pop(canvas_image, pop_image,
         pop_offset=(spa.align.mid, spa.align.mid),
-        pop_per_pixel=1.0/5.0, pop_stencil=None, pop_seed=None):
-    pop_offset = imp.calc_alignment(pop_offset, canvas_image, pop_image)
+        pop_per_pixel=1.0/5.0,
+        pop_stencil=None,
+        pop_seed=None,
+        **kwargs):
+    ffx = _get_fxdata(**kwargs)
 
+    pop_offset = imp.calc_alignment(pop_offset, canvas_image, pop_image)
     pop_stencil = pop_stencil or \
         Image.open(os.path.join(spa.input_dir, 'stencil_default.png'))
     pop_rng = random.seed(pop_seed)
@@ -142,11 +152,11 @@ def pop(canvas_image, pop_image, pop_num_frames,
         op=lambda l, r: int(l-r))
 
     frame_images = []
-    for frame_index in range(pop_num_frames):
+    for frame_index in range(ffx.fcount):
         frame_image = canvas_image.copy()
         stencil_image = pop_stencil.copy()
 
-        particle_alpha = alpha_func(frame_index / max(pop_num_frames - 1.0, 1.0))
+        particle_alpha = alpha_func(frame_index / max(ffx.fcount - 1.0, 1.0))
         # TODO(JRC): Figure out a better workflow for modifying the alpha values
         # of the original image in batch.
         alpha_data = stencil_image.getdata(band=3)
@@ -165,11 +175,28 @@ def pop(canvas_image, pop_image, pop_num_frames,
 
     return frame_images
 
-def crossfade(start_image, end_image, fade_num_frames, fade_color=None):
+def crossfade(start_image, end_image, fade_color=None, **kwargs):
     # TODO(JRC): If a fade color is specified, then this is a full fade.
     # Otherwise, this is a cross-fade.
     # TODO(JRC): Allow specification of function for fade? (e.g. f(t)=>(s_a, e_a))
+    ffx = _get_fxdata(**kwargs)
     pass
 
-def still(image, frame_count=1):
-    return [image.copy() for i in range(frame_count)]
+def still(image, **kwargs):
+    # NOTE(JRC): This function doesn't use FX time data because FFMPEG does scaling.
+    return [image.copy()]
+
+### Helper Types ###
+
+fxdata = collections.namedtuple('fxdata', ['fps', 'ftt', 'fdt', 'fcount'])
+
+### Helper Functions ###
+
+def _get_fxdata(**kwargs):
+    fxargs = {'fps': 60, 'ftt': 1.0}
+    fxargs = {k: kwargs.get(k, v) for k, v in fxargs.iteritems()}
+
+    fxargs['fdt'] = 1.0 / fxargs['fps']
+    fxargs['fcount'] = int(math.ceil(fxargs['ftt'] * fxargs['fps']))
+
+    return fxdata(**fxargs)

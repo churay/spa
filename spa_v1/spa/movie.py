@@ -33,9 +33,8 @@ class movie():
         self._filters[index].pop(subindex)
 
     @spa.log
-    def render(self, movie_name, **kwargs):
+    def render(self, movie_name, fps=60, **kwargs):
         fself = movie.render
-        smooth_seams = kwargs.get('smooth_seams', False)
 
         # NOTE(JRC): Processing one sequence type per loop allows the sequences
         # to be processed before the transitions.
@@ -44,7 +43,7 @@ class movie():
         for iter_seq_type in range(1, 3):
             iter_seq_str = 'Sequence' if iter_seq_type == 1 else 'Transition'
             fself.log('Processing %ss' % iter_seq_str, 2)
-            for seq_index, (seq_func, _) in enumerate(self._sequences):
+            for seq_index, (seq_func, seq_duration) in enumerate(self._sequences):
                 adj_frames = []
                 for adj_index in [seq_index+o for o in [-1, 1]]:
                     if not (0 <= adj_index < len(self._sequences)) or \
@@ -58,7 +57,10 @@ class movie():
 
                 if self._get_seq_type(seq_index) == iter_seq_type:
                     fself.log('Producing Frames for Sequence #%d' % (seq_index + 1), 3)
-                    seq_frame_lists[seq_index].extend(seq_func(*tuple(adj_frames)[:iter_seq_type]))
+                    seq_args = tuple(adj_frames)[:iter_seq_type]
+                    seq_kwargs = {'fps': fps, 'ftt': seq_duration}
+
+                    seq_frame_lists[seq_index].extend(seq_func(*seq_args, **seq_kwargs))
 
         fself.log('Applying Filters', 1)
         for seq_index, (seq_frames, seq_filters) in enumerate(zip(seq_frame_lists, self._filters)):
@@ -71,11 +73,10 @@ class movie():
         '''
         # TODO(JRC): Fix a bug in this code that causes sequences with singular
         # frames to be deleted when adjacent to sequences with duplicates.
-        if smooth_seams:
-            fself.log('Smoothing Sequence Seams', 1)
-            for prev_frames, curr_frames in zip(seq_frame_lists, seq_frame_lists[1:]):
-                if prev_frames[-1].tobytes() == curr_frames[0].tobytes():
-                    prev_frames.pop()
+        fself.log('Smoothing Sequence Seams', 1)
+        for prev_frames, curr_frames in zip(seq_frame_lists, seq_frame_lists[1:]):
+            if prev_frames[-1].tobytes() == curr_frames[0].tobytes():
+                prev_frames.pop()
         '''
 
         fself.log('Rendering Movie', 1)
