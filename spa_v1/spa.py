@@ -10,10 +10,6 @@ __doc__ = '''Module for "SPA" Console Application
     and tells us how fast we need to go potentially
     - for the pop effect, we'd go some distance proportional to the length
       of the curve and the scale of the picture
-* Roll back changes to time scale, just input the ideal number of samples
-  given the fps and duration; change functions to use sample numbers (when
-  needed); put vectors everywhere to make calculations simpler (remove 'vecop');
-  refactor some stuff.
 * Implement the 'fx.pop' function.
 * Implement the 'fx.fade' transition function.
 
@@ -62,7 +58,7 @@ def main():
     # Basic Test #
 
     '''
-    movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image, stroke_color=spa.color('black'), stroke_serial=False, **k), 1.0)
+    movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image, stroke_color=spa.color('black'), stroke_serial=False, **k), 3.0)
     movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.5)
     '''
 

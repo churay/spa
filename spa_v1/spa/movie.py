@@ -1,6 +1,6 @@
 __doc__ = '''Module for the Movie Class Implementation'''
 
-import os, sys, shutil, inspect
+import os, sys, math, shutil, inspect
 import spa, ffmpeg
 
 ### Module Classes ###
@@ -58,8 +58,7 @@ class movie(object):
                 if self._get_seq_type(seq_index) == iter_seq_type:
                     fself.log('Producing Frames for Sequence #%d' % (seq_index + 1), 3)
                     seq_args = tuple(adj_frames)[:iter_seq_type]
-                    seq_kwargs = {'fps': fps, 'ftt': seq_duration}
-
+                    seq_kwargs = {'num_frames': int(math.ceil(fps * seq_duration))}
                     seq_frame_lists[seq_index].extend(seq_func(*seq_args, **seq_kwargs))
 
         fself.log('Applying Filters', 1)

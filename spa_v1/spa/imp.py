@@ -24,11 +24,13 @@ def distrib_colors(count):
 
 ## Math Functions ##
 
-def to_1d(pixel_x, pixel_y, image):
-    return pixel_x + pixel_y * image.width
+def to_1d(pixel_x, pixel_y, image, as_vector=False):
+    pixel_1d = pixel_x + pixel_y * image.width
+    return vector(1, pixel_1d) if as_vector else pixel_1d
 
-def to_2d(pixel_i, image):
-    return (int(pixel_i % image.width), int(pixel_i / image.width))
+def to_2d(pixel_i, image, as_vector=False):
+    pixel_2d = (int(pixel_i % image.width), int(pixel_i / image.width))
+    return vector(2, *pixel_2d) if as_vector else pixel_2d
 
 def calc_adjacent(pixel, image):
     px, py = to_2d(pixel, image)
@@ -39,18 +41,18 @@ def calc_adjacent(pixel, image):
 
 # TODO(JRC): Consider adding support for alignment by percentages as well.
 def calc_alignment(align_coords, image, subimage=None):
-    out_coords = vector(2)
+    out_coords = vector(2, 0)
 
-    for align_idx, align_coord in enumerate(align_coords):
+    for align_index, align_coord in enumerate(align_coords.dvals):
         if align_coord == spa.align.lo:
             out_coords[align_index] = 0
         elif align_coord == spa.align.mid:
-            image_coord = image.size[align_idx] / 2
-            subimage_adjust = subimage.size[align_idx] / 2 if subimage else 0
+            image_coord = image.size[align_index] / 2
+            subimage_adjust = subimage.size[align_index] / 2 if subimage else 0
             out_coords[align_index] = image_coord - subimage_adjust
         elif align_coord == spa.align.hi:
-            image_coord = image.size[align_idx] - 1
-            subimage_adjust = subimage.size[align_idx] if subimage else 0
+            image_coord = image.size[align_index] - 1
+            subimage_adjust = subimage.size[align_index] if subimage else 0
             out_coords[align_index] = image_coord - subimage_adjust
         else:
             out_coords[align_index] = align_coord
@@ -77,14 +79,13 @@ def calc_orientation(boundary, image):
 # TODO(JRC): Improve this method by using a neighborhood curve approximation
 # technique based on point fitting.
 def calc_tangent(boundary, index, image):
-    tangent_samples = [spa.vecop(
-        to_2d(contour[(index-i)], image),
-        to_2d(contour[(index+i)%len(boundary)], image),
-        op=lambda l, r: l - r) for i in range(1, 6)]
+    tangent_samples = [
+        vector(2, *to_2d(boundary[(index-i)], image)) -
+        vector(2, *to_2d(boundary[(index+i)%len(boundary)], image))
+        for i in range(1, 6)]
 
-    tangent_average = tuple(
-        sum(s[d] for s in tangent_samples) / len(tangent_samples)
-        for d in range(2))
+    tangent_average = sum(tangent_samples, vector(2, 0.0)) / len(tangent_samples)
+    tangent_average.inormal()
 
     return tangent_average
 
