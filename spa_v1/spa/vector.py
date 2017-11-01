@@ -92,12 +92,9 @@ class vector(object):
     def irotate(self, degrees):
         assert self.dim == 2, 'Cannot rotate a non-2D vector yet.'
         radians = math.radians(degrees)
-        self._dvals[0] = (
-                math.cos(radians) * self._dvals[0] -
-                math.sin(radians) * self._dvals[1])
-        self._dvals[1] = (
-                math.sin(radians) * self._dvals[0] +
-                math.cos(radians) * self._dvals[1])
+        self._dvals = [
+            math.cos(radians) * self._dvals[0] - math.sin(radians) * self._dvals[1],
+            math.sin(radians) * self._dvals[0] + math.cos(radians) * self._dvals[1]]
         return self
 
     def coerce(self, dtype):

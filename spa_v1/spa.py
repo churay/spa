@@ -10,6 +10,7 @@ __doc__ = '''Module for "SPA" Console Application
     and tells us how fast we need to go potentially
     - for the pop effect, we'd go some distance proportional to the length
       of the curve and the scale of the picture
+* Implement better type coercion stuff for the 'spa.vector' type.
 * Implement the 'fx.pop' function.
 * Implement the 'fx.fade' transition function.
 

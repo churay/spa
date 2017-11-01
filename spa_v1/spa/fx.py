@@ -122,7 +122,7 @@ def pop(canvas_image, pop_image,
             # velocity values so that accumulations happen and jumps only occur
             # when the proper threshold is reached.
             pixel_tangent = imp.calc_tangent(contour, pixel_index, pop_image)
-            pixel_normal = pixel_tangent.normal().irotate(contour_dir * 90)
+            pixel_normal = pixel_tangent.irotate(contour_dir * 90)
             pixel_rotation = 2
 
             contour_particles.append([
