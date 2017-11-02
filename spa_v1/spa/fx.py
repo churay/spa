@@ -14,8 +14,8 @@ def sstroke(canvas_image, stroke_image,
         stroke_color=None,
         **kwargs):
     stroke_offset = imp.calc_alignment(stroke_offset, canvas_image, stroke_image)
-    to_canvas = lambda sp: (sp + stroke_offset).icoerce(int).dvals
-    get_pixel = lambda sp: stroke_image.getpixel(sp.dvals)[:3]
+    to_canvas = lambda sp: imp.to_pixel(sp + stroke_offset)
+    get_pixel = lambda sp: stroke_image.getpixel(imp.to_pixel(sp))[:3]
 
     stroke_cells = imp.calc_opaque_cells(stroke_image)
     stroke_bounds = imp.calc_cell_boundaries(stroke_image, stroke_cells)
@@ -64,7 +64,7 @@ def scale(scale_image, scale_func,
 
         frame_image = scale_image.resize(frame_scale_2d, resample=Image.LANCZOS)
         frame_offset = imp.calc_alignment(scale_origin, canvas_image, frame_image)
-        canvas_image.paste(frame_image, frame_offset.dvals, frame_image)
+        canvas_image.paste(frame_image, imp.to_pixel(frame_offset), frame_image)
 
         frame_images.append(canvas_image)
 
@@ -82,8 +82,7 @@ def pop(canvas_image, pop_image,
     ffx = _get_fxdata(**kwargs)
 
     pop_offset = imp.calc_alignment(pop_offset, canvas_image, pop_image)
-    pop_stencil = pop_stencil or \
-        Image.open(os.path.join(spa.input_dir, 'stencil_default.png'))
+    pop_stencil = pop_stencil or spa.read_image('default.png', spa.imtype.stencil)
     pop_rng = random.seed(pop_seed)
 
     pop_cells = imp.calc_opaque_cells(pop_image)
@@ -95,8 +94,8 @@ def pop(canvas_image, pop_image,
 
     scale_baseline = min(*pop_image.size)
 
-    stencil_scale = vector(2, pop_scale * scale_baseline).icoerce(int)
-    pop_stencil = pop_stencil.resize(stencil_scale.dvals, resample=Image.LANCZOS)
+    stencil_scale = vector(2, pop_scale * scale_baseline)
+    pop_stencil = pop_stencil.resize(imp.to_pixel(stencil_scale), resample=Image.LANCZOS)
     stencil_offset = imp.calc_alignment(vector(2, spa.align.mid), pop_stencil)
 
     pop_velocity *= scale_baseline
@@ -136,7 +135,7 @@ def pop(canvas_image, pop_image,
     # Simulate Particles for Duration #
 
     alpha_func = lambda fu: 0 + 4*fu - 4*fu**2
-    to_canvas = lambda pp: ((pp + pop_offset) - stencil_offset).icoerce(int).dvals
+    to_canvas = lambda pp: imp.to_pixel((pp + pop_offset) - stencil_offset)
 
     frame_images = []
     for frame_index in range(ffx.num_frames):

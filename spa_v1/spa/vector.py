@@ -75,6 +75,9 @@ class vector(object):
         assert index < self.dim, 'Access index must be less than vector length.'
         self._dvals[index] = scalar
 
+    def __len__(self):
+        return self._dim
+
     def __repr__(self):
         return "vec%d(%s)" % (self.dim, ", ".join(map(str, self._dvals)))
 
@@ -84,7 +87,7 @@ class vector(object):
         return math.sqrt( self % self )
 
     def normal(self):
-        copy = vector(self.dim, *self.dvals)
+        copy = vector(self.dim, *tuple(self._dvals))
         copy /= self.length()
         return copy
 
@@ -98,12 +101,4 @@ class vector(object):
         self._dvals = [
             math.cos(radians) * self._dvals[0] - math.sin(radians) * self._dvals[1],
             math.sin(radians) * self._dvals[0] + math.cos(radians) * self._dvals[1]]
-        return self
-
-    def coerce(self, dtype):
-        copy = vector(self.dim, *self.dvals)
-        return copy.icoerce(dtype)
-
-    def icoerce(self, dtype):
-        for d in range(self.dim): self._dvals[d] = dtype(self._dvals[d])
         return self

@@ -32,6 +32,9 @@ def to_2d(pixel_i, image, as_vector=False):
     pixel_2d = (int(pixel_i % image.width), int(pixel_i / image.width))
     return vector(2, *pixel_2d) if as_vector else pixel_2d
 
+def to_pixel(vector):
+    return tuple(int(vector[d]) for d in range(vector.dim))
+
 def calc_adjacent(pixel, image):
     px, py = to_2d(pixel, image)
     return [

@@ -1,12 +1,14 @@
 __doc__ = '''Module for SPA ((Sequential Picture Amalgamator)) Globals'''
 
 import os, sys, collections, time, json, subprocess
+from PIL import Image
 
 ### Module Constants ###
 
 base_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 input_dir = os.path.join(base_dir, 'in')
 output_dir = os.path.join(base_dir, 'out')
+stencil_dir = os.path.join(input_dir, 'stencil')
 
 colors = {
     'red':        (255,   0,   0),
@@ -18,12 +20,17 @@ colors = {
 }
 
 align = type('Enum', (), {'lo': -3, 'mid': -2, 'hi': -1})
-orient = type('Enum', (), {'none': 0, 'cw': 1, 'ccw': 2})
+orient = type('Enum', (), {e: i for i, e in enumerate(['none', 'cw', 'ccw'])})
+imtype = type('Enum', (), {e: i for i, e in enumerate(['input', 'output', 'stencil'])})
 
 ### Module Functions ###
 
 def clamp(value, min_value, max_value):
     return max(min(value, max_value), min_value)
+
+def color(name, opacity=255):
+    color_tuple = colors.get(name, 'black')
+    return (color_tuple[0], color_tuple[1], color_tuple[2], opacity)
 
 def distribute(num_items, num_buckets, bucket_limit=float('inf')):
     assert num_items <= num_buckets * bucket_limit, 'Not enough space for items.'
@@ -48,15 +55,13 @@ def distribute(num_items, num_buckets, bucket_limit=float('inf')):
     # return [list(b) if bucket_limit != 1 else b.pop() for b in buckets]
     return [list(b) for b in buckets]
 
-def color(name, opacity=255):
-    color_tuple = colors.get(name, 'black')
-    return (color_tuple[0], color_tuple[1], color_tuple[2], opacity)
+def read_image(image_name, image_type=imtype.input):
+    type_to_dir = {
+        imtype.input: input_dir,
+        imtype.output: output_dir,
+        imtype.stencil: stencil_dir}
 
-def display_status(item, curr, total):
-    sys.stdout.write('\r')
-    sys.stdout.write('  processing %s %d/%d...' % (item, curr+1, total))
-    if curr + 1 >= total: sys.stdout.write('\n')
-    sys.stdout.flush()
+    return Image.open(os.path.join(type_to_dir[image_type], image_name))
 
 # TODO(JRC): Write a function that colorizes cache files so that they're
 # easier to debug.
