@@ -201,8 +201,10 @@ def fade(in_image, out_image,
 
     return frame_images
 
-def still(image, **kwargs):
-    return [image.copy()]
+def still(in_image, still_color=spa.color('white'), **kwargs):
+    still_image = Image.new('RGBA', in_image.size, color=still_color)
+    still_image.paste(in_image, mask=in_image)
+    return [still_image]
 
 ### Helper Types ###
 

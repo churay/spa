@@ -73,11 +73,9 @@ def main():
 
     # Fade Test #
 
-    '''
     movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
     movie.add_sequence(lambda pf, nf, **k: spa.fx.fade(pf, nf, fade_color=spa.color('white'), **k), 2.0)
     movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
-    '''
 
     assert movie.render('test', fps=60, log=True), 'Failed to render movie.'
 
