@@ -161,12 +161,45 @@ def pop(canvas_image, pop_image,
 
     return frame_images
 
-def crossfade(start_image, end_image, fade_color=None, **kwargs):
-    # TODO(JRC): If a fade color is specified, then this is a full fade.
-    # Otherwise, this is a cross-fade.
-    # TODO(JRC): Allow specification of function for fade? (e.g. f(t)=>(s_a, e_a))
+def fade(in_image, out_image,
+        fade_func=lambda fu: (1.0 - fu, fu),
+        fade_color=None,
+        **kwargs):
     ffx = _get_fxdata(**kwargs)
-    pass
+
+    # TODO(JRC): Improve the robustness of this function by automatically
+    # scaling the larger image to fit the smaller image.
+    assert in_image.size == out_image.size, 'Cannot fade between images of different dimensions.'
+
+    if fade_color != None:
+        fade_image = Image.new('RGBA', in_image.size, color=fade_color)
+
+        in_num_frames = int(ffx.num_frames / 2.0)
+        out_num_frames = ffx.num_frames - in_num_frames
+
+        # TODO(JRC): Remove the duplicate frame that will almost inevitably be
+        # generated between these two frame sequences.
+        frame_images = []
+        frame_images.extend(fade(in_image, fade_image,
+            fade_func=fade_func, num_frames=in_num_frames))
+        frame_images.extend(fade(fade_image, out_image,
+            fade_func=fade_func, num_frames=out_num_frames))
+    else:
+        frame_images = []
+        for frame_index in range(ffx.num_frames):
+            frame_end_images = [i.copy() for i in [in_image, out_image]]
+            frame_end_alphas = fade_func(frame_index / max(ffx.num_frames - 1.0, 1.0))
+
+            for end_image, end_alpha in zip(frame_end_images, frame_end_alphas):
+                alpha_data = end_image.getdata(band=3)
+                alpha_image = Image.new('L', end_image.size)
+                alpha_image.putdata([int(end_alpha * ia) for ia in alpha_data])
+                end_image.putalpha(alpha_image)
+
+            frame_image = Image.alpha_composite(*tuple(frame_end_images))
+            frame_images.append(frame_image)
+
+    return frame_images
 
 def still(image, **kwargs):
     return [image.copy()]

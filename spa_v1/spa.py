@@ -4,7 +4,6 @@ __doc__ = '''Module for "SPA" Console Application
 
 === REQUIRED ===
 
-* Implement the 'fx.fade' transition function.
 * Write all of the final scripts.
 
 === OPTIONAL ===
@@ -32,9 +31,11 @@ def main():
 
     # Current Test #
 
+    '''
     movie.add_sequence(lambda pf, **k: spa.fx.still(Image.alpha_composite(out_image, base_image), **k), 0.1)
     movie.add_sequence(lambda pf, **k: spa.fx.pop(pf, base_image, pop_rate=15, pop_scale=0.06, pop_stencil=pop_image, **k), 0.5)
     movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.1)
+    '''
 
     # Mock Final #
 
@@ -68,6 +69,14 @@ def main():
     movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
     movie.add_sequence(lambda pf, **k: spa.fx.pop(pf, pf, pop_rate=15, pop_scale=0.03, **k), 0.5)
     movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.1)
+    '''
+
+    # Fade Test #
+
+    '''
+    movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
+    movie.add_sequence(lambda pf, nf, **k: spa.fx.fade(pf, nf, fade_color=spa.color('white'), **k), 2.0)
+    movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
     '''
 
     assert movie.render('test', fps=60, log=True), 'Failed to render movie.'
