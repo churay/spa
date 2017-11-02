@@ -30,7 +30,7 @@ from PIL import Image
 ### Main Entry Point ###
 
 def main():
-    base_image = Image.open(os.path.join(spa.input_dir, 'test4.png'))#'silhouette.png'))
+    base_image = Image.open(os.path.join(spa.input_dir, 'silhouette_small.png'))#'test4.png'))#'silhouette.png'))
     over_image = Image.open(os.path.join(spa.input_dir, 'overlay.png'))
     out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
     #out_image = Image.new('RGBA', tuple(int(1.5*d) for d in base_image.size), color=spa.color('white'))
@@ -74,7 +74,7 @@ def main():
     # Pop Test #
 
     movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
-    movie.add_sequence(lambda pf, **k: spa.fx.pop(pf, pf, pop_per_pixel=0.05, **k), 1.0)
+    movie.add_sequence(lambda pf, **k: spa.fx.pop(pf, pf, pop_rate=20, **k), 0.5)
     movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.1)
 
     assert movie.render('test', fps=60, log=True), 'Failed to render movie.'

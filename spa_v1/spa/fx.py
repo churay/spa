@@ -64,7 +64,7 @@ def scale(scale_image, scale_func,
 
         frame_image = scale_image.resize(frame_scale_2d, resample=Image.LANCZOS)
         frame_offset = imp.calc_alignment(scale_origin, canvas_image, frame_image)
-        canvas_image.paste(frame_image, frame_offset.dvals)
+        canvas_image.paste(frame_image, frame_offset.dvals, frame_image)
 
         frame_images.append(canvas_image)
 
@@ -72,9 +72,10 @@ def scale(scale_image, scale_func,
 
 def pop(canvas_image, pop_image,
         pop_offset=vector(2, spa.align.mid),
-        pop_per_pixel=0.2,        # units: unit / pixel
-        pop_velocity=0.1,         # units: screen % / timeframe
-        pop_rotation=360,         # units: degrees / timeframe
+        pop_rate=10,              # units: number / contour
+        pop_velocity=0.05,        # units: pop image % / timescale
+        pop_rotation=90,          # units: degrees / timescale
+        pop_scale=0.07,           # units: pop image %
         pop_stencil=None,
         pop_seed=None,
         **kwargs):
@@ -90,16 +91,15 @@ def pop(canvas_image, pop_image,
     pop_strokes = imp.calc_cell_strokes(pop_image, pop_bounds)
     pop_contours = [sorted(psl, key=lambda p: len(p))[-1] for psl in pop_strokes]
 
-    # Scale Stencil to Fit Contours #
+    # Scale Parameters to Fit Image #
 
-    contour_min_bbox = sorted(
-        [imp.calc_connected_bbox(pop_image, c) for c in pop_contours],
-        key=lambda bb: bb[2]*bb[3])[0]
-    contour_min_dim = min(contour_min_bbox)
+    scale_baseline = min(*pop_image.size)
 
-    stencil_scale_2d = tuple(int(0.2*contour_min_dim) for d in range(2))
-    pop_stencil = pop_stencil.resize(stencil_scale_2d, resample=Image.LANCZOS)
+    stencil_scale = vector(2, pop_scale * scale_baseline).icoerce(int)
+    pop_stencil = pop_stencil.resize(stencil_scale.dvals, resample=Image.LANCZOS)
     stencil_offset = imp.calc_alignment(vector(2, spa.align.mid), pop_stencil)
+
+    pop_velocity *= scale_baseline
 
     # Generate Contour Particles #
 
@@ -108,35 +108,33 @@ def pop(canvas_image, pop_image,
         contour_orient = imp.calc_orientation(contour, pop_image)
         contour_dir = 1 if contour_orient == spa.orient.ccw else -1
         contour_distrib = spa.distribute(
-            int(len(contour) * pop_per_pixel), len(contour), bucket_limit=1)
+            int(pop_rate), len(contour), bucket_limit=1)
 
+        # TODO(JRC): Consider adding randomness to the following attributes:
+        # - Start Angle
+        # - Velocity Magnitude
+        # - Velocity Vector
+        # - Rotation Magnitude
         contour_particles = []
         for pixel_index, pixel_particles in enumerate(contour_distrib):
             if not pixel_particles: continue
+            pixel_pos = imp.to_2d(contour[pixel_index], pop_image, True)
             pixel_angle = 0
 
-            # TODO(JRC): Generate the randomized velocity (small perturbation to
-            # the normal) and the rotation (random rotation amount between ranges).
-            # NOTE(JRC): Both the velocity and the magnitude are per frame values.
-            # There should probably be some consideration made toward really low
-            # velocity values so that accumulations happen and jumps only occur
-            # when the proper threshold is reached.
             pixel_tangent = imp.calc_tangent(contour, pixel_index, pop_image)
             pixel_normal = pixel_tangent.irotate(contour_dir * 90)
-            pixel_rotation = 2
+
+            pixel_velocity = (pop_velocity / float(ffx.num_frames)) * pixel_normal
+            pixel_rotation = (1.0 / float(ffx.num_frames)) * pop_rotation
 
             contour_particles.append([
-                imp.to_2d(contour[pixel_index], pop_image, True), pixel_angle,
-                pixel_normal, pixel_rotation])
+                pixel_pos, pixel_angle,
+                pixel_velocity, pixel_rotation])
 
         pop_particles.extend(contour_particles)
 
     # Simulate Particles for Duration #
 
-    # TODO(JRC): Simulate the particles for the given number of frames
-    # -> fade in and out during this whole process (fading interpolation function is some easing function)
-    # -> apply and velocity to each particle
-    # -> create the pop frame by stamping all of the stencils into the proper locations on the canvas.
     alpha_func = lambda fu: 0 + 4*fu - 4*fu**2
     to_canvas = lambda pp: ((pp + pop_offset) - stencil_offset).icoerce(int).dvals
 
@@ -155,7 +153,7 @@ def pop(canvas_image, pop_image,
 
         for particle in pop_particles:
             particle_image = stencil_image.rotate(particle[1], resample=Image.BILINEAR)
-            frame_image.paste(particle_image, to_canvas(particle[0]))
+            frame_image.paste(particle_image, to_canvas(particle[0]), particle_image)
 
             particle[0] += particle[2]
             particle[1] += particle[3]

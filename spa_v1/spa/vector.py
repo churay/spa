@@ -50,6 +50,9 @@ class vector(object):
         assert isinstance(scalar, (int, float)), 'Cannot multiply vector by non-scalar.'
         return vector(self.dim, *tuple(s * scalar for s in self._dvals))
 
+    def __rmul__(self, scalar):
+        return self * scalar
+
     def __div__(self, scalar):
         assert isinstance(scalar, (int, float)), 'Cannot divide vector by non-scalar.'
         return vector(self.dim, *tuple(s / scalar for s in self._dvals))
