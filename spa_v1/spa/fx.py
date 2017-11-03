@@ -107,7 +107,7 @@ def pop(canvas_image, pop_image,
         contour_orient = imp.calc_orientation(contour, pop_image)
         contour_dir = 1 if contour_orient == spa.orient.ccw else -1
         contour_distrib = spa.distribute(
-            int(pop_rate), len(contour), bucket_limit=1)
+            int(pop_rate), len(contour), bucket_limit=1, is_cyclic=True)
 
         # TODO(JRC): Consider adding randomness to the following attributes:
         # - Start Angle
@@ -202,9 +202,13 @@ def fade(in_image, out_image,
     return frame_images
 
 def still(in_image, still_color=spa.color('white'), **kwargs):
-    still_image = Image.new('RGBA', in_image.size, color=still_color)
-    still_image.paste(in_image, mask=in_image)
-    return [still_image]
+    # TODO(JRC): Make using the original image for the still more elegant.
+    if not still_color:
+        return [in_image.copy()]
+    else:
+        still_image = Image.new('RGBA', in_image.size, color=still_color)
+        still_image.paste(in_image, mask=in_image)
+        return [still_image]
 
 ### Helper Types ###
 

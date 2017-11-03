@@ -61,3 +61,6 @@ venv/
 out/
 *.swp
 *.swo
+
+# Project specific
+tmp/

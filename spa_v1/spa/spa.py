@@ -8,6 +8,7 @@ from PIL import Image
 base_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 input_dir = os.path.join(base_dir, 'in')
 output_dir = os.path.join(base_dir, 'out')
+temp_dir = os.path.join(base_dir, 'tmp')
 stencil_dir = os.path.join(input_dir, 'stencil')
 
 colors = {
@@ -21,18 +22,20 @@ colors = {
 
 align = type('Enum', (), {'lo': -3, 'mid': -2, 'hi': -1})
 orient = type('Enum', (), {e: i for i, e in enumerate(['none', 'cw', 'ccw'])})
-imtype = type('Enum', (), {e: i for i, e in enumerate(['input', 'output', 'stencil'])})
+imtype = type('Enum', (), {e: i for i, e in enumerate(['input', 'output', 'temp', 'stencil'])})
 
 ### Module Functions ###
 
 def clamp(value, min_value, max_value):
     return max(min(value, max_value), min_value)
 
-def color(name, opacity=255):
+def color(name, alpha=255):
     color_tuple = colors.get(name, 'black')
-    return (color_tuple[0], color_tuple[1], color_tuple[2], opacity)
+    return (color_tuple[0], color_tuple[1], color_tuple[2], alpha)
 
-def distribute(num_items, num_buckets, bucket_limit=float('inf')):
+def distribute(num_items, num_buckets, bucket_limit=float('inf'), is_cyclic=False):
+    # TODO(JRC): Add better support to allow overfilling to the front if the
+    # requested distribution is cyclic.
     assert num_items <= num_buckets * bucket_limit, 'Not enough space for items.'
 
     buckets = [collections.deque() for b in range(num_buckets)]
@@ -46,7 +49,7 @@ def distribute(num_items, num_buckets, bucket_limit=float('inf')):
             adjacent_bucket_index = bucket_index + fill_dir
             add_to_bucket(evicted_item, adjacent_bucket_index, fill_dir=fill_dir)
 
-    uniform_step = num_buckets / (num_items - 1.0)
+    uniform_step = num_buckets / (num_items - (0.0 if is_cyclic else 1.0))
     uniform_offsets = [uniform_step * si for si in range(num_items)]
     for item, offset in enumerate(uniform_offsets):
         bucket_index = min(int(offset), num_buckets - 1)
@@ -59,6 +62,7 @@ def read_image(image_name, image_type=imtype.input):
     type_to_dir = {
         imtype.input: input_dir,
         imtype.output: output_dir,
+        imtype.temp: temp_dir,
         imtype.stencil: stencil_dir}
 
     return Image.open(os.path.join(type_to_dir[image_type], image_name))

@@ -22,29 +22,21 @@ from PIL import Image
 ### Main Entry Point ###
 
 def main():
-    base_image = spa.read_image('silhouette_small.png')#'test4.png')#'silhouette.png')
-    pop_image = spa.read_image('blue_star.png', spa.imtype.stencil)
+    '''
+    base_image = spa.read_image('test4.png', spa.imtype.temp)
+    pop_image = spa.read_image('orange_star.png', spa.imtype.stencil)
     out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
-    # out_image = Image.new('RGBA', tuple(int(1.5*d) for d in base_image.size), color=spa.color('white'))
 
     movie = spa.movie(out_image)
+    '''
 
     # Current Test #
 
     '''
-    movie.add_sequence(lambda pf, **k: spa.fx.still(Image.alpha_composite(out_image, base_image), **k), 0.1)
-    movie.add_sequence(lambda pf, **k: spa.fx.pop(pf, base_image, pop_rate=15, pop_scale=0.06, pop_stencil=pop_image, **k), 0.5)
-    movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.1)
-    '''
-
-    # Mock Final #
-
-    '''
-    movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image, stroke_color=spa.color('black'), stroke_serial=False, **k), 2.0)
-    # TODO(JRC): Refine the function used here to have a bit more "pop"!
-    movie.add_sequence(lambda pf, **k: spa.fx.scale(pf, lambda fu: 1 - 0.38*math.sin(1.5*math.pi*fu), **k), 0.7)
-    # TODO(JRC): Create the image that's the silhouette with the overlay at scale.
-    movie.add_sequence(lambda pf, **k: spa.fx.pop(pf, **k), 0.5)
+    movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image,
+        stroke_serial=False, stroke_color=spa.color('black'), **k), 2.0)
+    movie.add_sequence(lambda pf, **k: spa.fx.pop(base_image, base_image,
+        pop_rate=10, pop_scale=0.05, pop_velocity=0.025, pop_rotation=270, pop_stencil=pop_image, **k), 0.5)
     movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.1)
     '''
 
@@ -73,9 +65,48 @@ def main():
 
     # Fade Test #
 
+    '''
     movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
     movie.add_sequence(lambda pf, nf, **k: spa.fx.fade(pf, nf, fade_color=spa.color('white'), **k), 2.0)
     movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
+    '''
+
+    # Mock Final #
+
+    canvas_scale = 1.50
+    embed_scale = 0.9 * canvas_scale
+    canvas_color = spa.color('white')
+
+    # TODO(JRC): Refine the functions used here to have a bit more "pop"!
+    ease_in = lambda fu: 1.0 - (embed_scale - 1.0) * math.sin(1.5 * math.pi * fu)
+    ease_out = lambda fu: 1.0 - (embed_scale - 1.0) * math.sin(1.5 * math.pi * fu)
+
+    base_image = spa.read_image('logo_silh_small.png')
+    pop_image = spa.read_image('blue_star.png', spa.imtype.stencil)
+
+    canvas_image = Image.new('RGBA',
+        spa.imp.to_pixel(canvas_scale * spa.vector(2, *base_image.size)),
+        color=canvas_color)
+
+    over_image = spa.read_image('logo_combo_small.png')
+    over_image = over_image.resize(
+        spa.imp.to_pixel(embed_scale * spa.vector(2, *base_image.size)),
+        resample=Image.LANCZOS)
+
+    over_frame = canvas_image.copy()
+    over_offset = spa.imp.calc_alignment(spa.vector(2, spa.align.mid),
+        canvas_image, over_image)
+    over_frame.paste(over_image, spa.imp.to_pixel(over_offset), over_image)
+
+    over_frame.save(os.path.join(spa.output_dir, 'over_test.png'))
+
+    # TODO(JRC): Fix up issues with scaling the images and its interference
+    # with the loops for the various component contours.
+    movie = spa.movie(canvas_image)
+    # movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image, stroke_serial=False, **k), 2.0)
+    # movie.add_sequence(lambda pf, **k: spa.fx.scale(pf, ease_in, **k), 1.0)
+    movie.add_sequence(lambda pf, **k: spa.fx.pop(over_frame, over_image, pop_rate=15, pop_scale=0.06, pop_stencil=pop_image, **k), 0.5)
+    # movie.add_sequence(lambda pf, **k: spa.fx.scale(pf, ease_in, **k), 1.0)
 
     assert movie.render('test', fps=60, log=True), 'Failed to render movie.'
 
