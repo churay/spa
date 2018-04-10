@@ -9,7 +9,8 @@ base_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 input_dir = os.path.join(base_dir, 'in')
 output_dir = os.path.join(base_dir, 'out')
 temp_dir = os.path.join(base_dir, 'tmp')
-stencil_dir = os.path.join(input_dir, 'stencil')
+stencil_dir = os.path.join(input_dir, 'stencils')
+test_dir = os.path.join(input_dir, 'tests')
 
 colors = {
     'red':        (255,   0,   0),
@@ -22,7 +23,7 @@ colors = {
 
 align = type('Enum', (), {'lo': -3, 'mid': -2, 'hi': -1})
 orient = type('Enum', (), {e: i for i, e in enumerate(['none', 'cw', 'ccw'])})
-imtype = type('Enum', (), {e: i for i, e in enumerate(['input', 'output', 'temp', 'stencil'])})
+imtype = type('Enum', (), {e: i for i, e in enumerate(['input', 'output', 'temp', 'stencil', 'test'])})
 
 ### Module Functions ###
 
@@ -63,7 +64,8 @@ def read_image(image_name, image_type=imtype.input):
         imtype.input: input_dir,
         imtype.output: output_dir,
         imtype.temp: temp_dir,
-        imtype.stencil: stencil_dir}
+        imtype.stencil: stencil_dir,
+        imtype.test: test_dir}
 
     return Image.open(os.path.join(type_to_dir[image_type], image_name))
 

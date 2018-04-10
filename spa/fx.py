@@ -8,18 +8,19 @@ from PIL import Image
 ### Module Functions ###
 
 # TODO(JRC): Add support for stencils.
-def sstroke(canvas_image, stroke_image,
+def sstroke(canvas_image, cell_image,
+        stroke_image=None,
         stroke_serial=False,
         stroke_offset=vector(2, spa.align.mid),
         stroke_color=None,
         **kwargs):
-    stroke_offset = imp.calc_alignment(stroke_offset, canvas_image, stroke_image)
+    stroke_offset = imp.calc_alignment(stroke_offset, canvas_image, cell_image)
     to_canvas = lambda sp: imp.to_pixel(sp + stroke_offset)
-    get_pixel = lambda sp: stroke_image.getpixel(imp.to_pixel(sp))[:3]
+    get_pixel = lambda sp: cell_image.getpixel(imp.to_pixel(sp))[:3]
 
-    stroke_cells = imp.calc_opaque_cells(stroke_image)
-    stroke_bounds = imp.calc_cell_boundaries(stroke_image, stroke_cells)
-    strokes = imp.calc_cell_strokes(stroke_image, stroke_bounds)
+    stroke_cells = imp.calc_opaque_cells(cell_image)
+    stroke_bounds = imp.calc_cell_boundaries(cell_image, stroke_cells)
+    strokes = imp.calc_cell_strokes(cell_image, stroke_bounds, stroke_image)
     strokes = [sl for sls in strokes for sl in sls]
 
     frame_images = [canvas_image.copy()]
@@ -29,7 +30,7 @@ def sstroke(canvas_image, stroke_image,
         for stroke in strokes:
             for stroke_pixel in stroke:
                 frame_image = frame_images[-1].copy()
-                pixel_vec = imp.to_2d(stroke_pixel, stroke_image, True)
+                pixel_vec = imp.to_2d(stroke_pixel, cell_image, True)
                 pixel_color = stroke_color or get_pixel(pixel_vec)
                 frame_image.putpixel(to_canvas(pixel_vec), pixel_color)
                 frame_images.append(frame_image)
@@ -40,7 +41,7 @@ def sstroke(canvas_image, stroke_image,
             frame_image = frame_images[-1].copy()
             for stroke, stroke_fill in zip(strokes, stroke_fills):
                 for stroke_index in stroke_fill[frame_index]:
-                    pixel_vec = imp.to_2d(stroke[stroke_index], stroke_image, True)
+                    pixel_vec = imp.to_2d(stroke[stroke_index], cell_image, True)
                     pixel_color = stroke_color or get_pixel(pixel_vec)
                     frame_image.putpixel(to_canvas(pixel_vec), pixel_color)
             frame_images.append(frame_image)

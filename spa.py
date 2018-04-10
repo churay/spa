@@ -12,7 +12,8 @@ __doc__ = '''Module for "SPA" Console Application
   the area of the stroke image that's filled at each step.
 * Improve the robustness of the 'movie.render' function so that it doesn't
   fail if there are no input sequences.
-
+* Improve quality of life for stroke function so that configuration doesn't
+  affect the output image.
 '''
 
 import os, math
@@ -22,30 +23,32 @@ from PIL import Image
 ### Main Entry Point ###
 
 def main():
-    '''
-    base_image = spa.read_image('test4.png', spa.imtype.temp)
+    base_name = 'test1'
+    base_image = spa.read_image('%s_cells.png' % base_name, spa.imtype.test)
+    stroke_image = spa.read_image('%s_strokes.png' % base_name, spa.imtype.test)
     pop_image = spa.read_image('orange_star.png', spa.imtype.stencil)
     out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
 
     movie = spa.movie(out_image)
-    '''
 
     # Current Test #
 
     '''
     movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image,
-        stroke_serial=False, stroke_color=spa.color('black'), **k), 2.0)
+        stroke_image=stroke_image, stroke_serial=False,
+        stroke_color=spa.color('black'), **k), 2.0)
     movie.add_sequence(lambda pf, **k: spa.fx.pop(base_image, base_image,
-        pop_rate=10, pop_scale=0.05, pop_velocity=0.025, pop_rotation=270, pop_stencil=pop_image, **k), 0.5)
+        pop_rate=10, pop_scale=0.05, pop_velocity=0.025, pop_rotation=270,
+        pop_stencil=pop_image, **k), 0.5)
     movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.1)
     '''
 
     # Stroke Test #
 
-    '''
-    movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image, stroke_color=spa.color('black'), stroke_serial=False, **k), 3.0)
+    movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image,
+        stroke_image=stroke_image, stroke_serial=False,
+        stroke_color=spa.color('black'), **k), 3.0)
     movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.5)
-    '''
 
     # Scale Test #
 
@@ -73,6 +76,7 @@ def main():
 
     # Mock Final #
 
+    '''
     canvas_scale = 1.50
     embed_scale = 0.9 * canvas_scale
     canvas_color = spa.color('white')
@@ -107,6 +111,7 @@ def main():
     # movie.add_sequence(lambda pf, **k: spa.fx.scale(pf, ease_in, **k), 1.0)
     movie.add_sequence(lambda pf, **k: spa.fx.pop(over_frame, over_image, pop_rate=15, pop_scale=0.06, pop_stencil=pop_image, **k), 0.5)
     # movie.add_sequence(lambda pf, **k: spa.fx.scale(pf, ease_in, **k), 1.0)
+    '''
 
     assert movie.render('test', fps=60, log=True), 'Failed to render movie.'
 

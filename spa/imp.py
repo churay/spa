@@ -14,9 +14,6 @@ from vector import vector
 def is_opaque(pixel, image):
     return image.getpixel(to_2d(pixel, image))[3] != 0
 
-def is_magenta(pixel, image):
-    return image.getpixel(to_2d(pixel, image))[:3] == (255, 0, 255)
-
 def distrib_colors(count):
     hues = [(1.0/count)*i for i in range(count)]
     rgbs = [colorsys.hsv_to_rgb(h, 1.0, 1.0) for h in hues]
@@ -154,10 +151,14 @@ def calc_cell_boundaries(image, cells):
 
     return boundaries
 
-def calc_cell_strokes(image, boundaries):
+def calc_cell_strokes(image, boundaries, stroke_image=None):
     # TODO(JRC): Change this method to be an iterative method so that this
     # weird adjustment of the recursion limit isn't necessary.
     sys.setrecursionlimit(5000)
+
+    if stroke_image:
+        assert image.size == stroke_image.size, \
+            'Cannot use stroke image since its dimensions do not match base.'
 
     # TODO(JRC): Comb over this function again during refactoring and
     # trim down all of the excessively long lines.
@@ -218,15 +219,16 @@ def calc_cell_strokes(image, boundaries):
             assert stroke_pixels is not None, 'Failed to calculate stroke(s).'
             stroke_pixels.extend(start_pixels[:-1][::-1])
 
-            orient_pixel = next((p for p in stroke_pixels if is_magenta(p, image)), None)
-            if orient_pixel:
-                orient_index = stroke_pixels.index(orient_pixel)
-                stroke_pixels = stroke_pixels[orient_index:] + stroke_pixels[:orient_index]
+            if stroke_image:
+                orient_pixel = next((p for p in stroke_pixels if is_opaque(p, stroke_image)), None)
+                if orient_pixel:
+                    orient_index = stroke_pixels.index(orient_pixel)
+                    stroke_pixels = stroke_pixels[orient_index:] + stroke_pixels[:orient_index]
 
-                orient_alpha = image.getpixel(to_2d(orient_pixel, image))[3]
-                want_orient = spa.orient.cw if orient_alpha == 255 else spa.orient.ccw
-                curr_orient = calc_orientation(stroke_pixels, image)
-                if curr_orient != want_orient : stroke_pixels.reverse()
+                    orient_alpha = image.getpixel(to_2d(orient_pixel, image))[3]
+                    want_orient = spa.orient.cw if orient_alpha == 255 else spa.orient.ccw
+                    curr_orient = calc_orientation(stroke_pixels, image)
+                    if curr_orient != want_orient : stroke_pixels.reverse()
 
             stroke_list.append(stroke_pixels)
         strokes.append(stroke_list)
