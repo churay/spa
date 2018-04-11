@@ -80,9 +80,6 @@ class movie(object):
 
         fself.log('Rendering Movie', 1)
 
-        # TODO(JRC): Handle the case in which this function is called without
-        # any input sequences.
-
         movie_dir = os.path.join(spa.output_dir, movie_name)
         shutil.rmtree(movie_dir, True)
         os.makedirs(movie_dir)

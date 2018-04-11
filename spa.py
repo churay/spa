@@ -1,20 +1,6 @@
 #!/usr/bin/env python
 
-__doc__ = '''Module for "SPA" Console Application
-
-=== REQUIRED ===
-
-* Write all of the final scripts.
-
-=== OPTIONAL ===
-
-* Add an option to the 'fx.sstroke' function to use a stencil that defines
-  the area of the stroke image that's filled at each step.
-* Improve the robustness of the 'movie.render' function so that it doesn't
-  fail if there are no input sequences.
-* Improve quality of life for stroke function so that configuration doesn't
-  affect the output image.
-'''
+__doc__ = '''Module for "SPA" Console Application'''
 
 import os, math
 import spa

@@ -7,7 +7,6 @@ from PIL import Image
 
 ### Module Functions ###
 
-# TODO(JRC): Add support for stencils.
 def sstroke(canvas_image, cell_image,
         stroke_image=None,
         stroke_serial=False,
@@ -24,8 +23,6 @@ def sstroke(canvas_image, cell_image,
     strokes = [sl for sls in strokes for sl in sls]
 
     frame_images = [canvas_image.copy()]
-    # TODO(JRC): Create a means of specifying an ordering for the serial
-    # method of silhouette stroking.
     if stroke_serial:
         for stroke in strokes:
             for stroke_pixel in stroke:
