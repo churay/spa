@@ -7,7 +7,7 @@ using a variety of image processing techniques.
 
 Run the following commands in order to install all third-party dependencies:
 
-1. `sudo apt-get install pip virtualenv`: Install library management utilities for Python.
+1. `sudo apt-get install ffmpeg pyton-pip python-virtualenv`: Install library management utilities for Python.
 1. `virtualenv venv`: Create a virtual environment for all of the Python dependencies.
 1. `source venv/bin/activate`: Activate the virtual environment to install dependencies locally.
 1. `pip install -r requirements.txt`: Install all Python dependencies into the local virtual environment.
