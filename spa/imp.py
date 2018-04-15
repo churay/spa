@@ -1,6 +1,6 @@
 __doc__ = '''Module for the Image Processing Functionality'''
 
-import sys, colorsys
+import sys, colorsys, itertools
 import spa
 from vector import vector
 
@@ -151,14 +151,10 @@ def calc_cell_boundaries(image, cells):
 
     return boundaries
 
-def calc_cell_strokes(image, boundaries, stroke_image=None):
+def calc_cell_strokes(image, boundaries):
     # TODO(JRC): Change this method to be an iterative method so that this
     # weird adjustment of the recursion limit isn't necessary.
     sys.setrecursionlimit(5000)
-
-    if stroke_image:
-        assert image.size == stroke_image.size, \
-            'Cannot use stroke image since its dimensions do not match base.'
 
     # TODO(JRC): Comb over this function again during refactoring and
     # trim down all of the excessively long lines.
@@ -219,18 +215,57 @@ def calc_cell_strokes(image, boundaries, stroke_image=None):
             assert stroke_pixels is not None, 'Failed to calculate stroke(s).'
             stroke_pixels.extend(start_pixels[:-1][::-1])
 
-            if stroke_image:
-                orient_pixel = next((p for p in stroke_pixels if is_opaque(p, stroke_image)), None)
-                if orient_pixel:
-                    orient_index = stroke_pixels.index(orient_pixel)
-                    stroke_pixels = stroke_pixels[orient_index:] + stroke_pixels[:orient_index]
-
-                    orient_alpha = image.getpixel(to_2d(orient_pixel, image))[3]
-                    want_orient = spa.orient.cw if orient_alpha == 255 else spa.orient.ccw
-                    curr_orient = calc_orientation(stroke_pixels, image)
-                    if curr_orient != want_orient : stroke_pixels.reverse()
-
             stroke_list.append(stroke_pixels)
         strokes.append(stroke_list)
 
     return strokes
+
+def orient_cell_strokes(image, orient_image, strokes):
+    assert image.size == orient_image.size, 'The given image sizes do not match.'
+
+    oriented_strokes = []
+
+    stroke_orient_pixels = [
+        next((p for p in s if is_opaque(p, orient_image)), None)
+        for s in strokes]
+
+    # TODO(JRC): Add a check here that ensures that all of the non-opaque
+    # pixels are used in the given 'orient_image'.
+
+    for stroke, orient_pixel in zip(strokes, stroke_orient_pixels):
+        oriented_stroke = []
+        if not orient_pixel:
+            oriented_stroke = stroke
+        else:
+            orient_index = stroke.index(orient_pixel)
+            oriented_stroke = stroke[orient_index:] + stroke[:orient_index]
+
+            orient_alpha = orient_image.getpixel(to_2d(orient_pixel, orient_image))[3]
+            want_orient = spa.orient.cw if orient_alpha == 255 else spa.orient.ccw
+            curr_orient = calc_orientation(oriented_stroke, image)
+            if curr_orient != want_orient : oriented_stroke.reverse()
+        oriented_strokes.append(oriented_stroke)
+
+    return oriented_strokes
+
+def order_cell_strokes(image, orient_image, strokes):
+    # TODO(JRC): There are still bugs in this code when grouping the pixels
+    # into bins.
+    assert image.size == orient_image.size, 'The given image sizes do not match.'
+
+    stroke_orient_pixels = [
+        next((p for p in s if is_opaque(p, orient_image)), None)
+        for s in strokes]
+
+    # TODO(JRC): Add a check here that ensures that all of the non-opaque
+    # pixels are used in the given 'orient_image'.
+
+    orient_color_to_strokes = {k: list(sp[0] for sp in g) for k, g in
+        itertools.groupby(zip(strokes, stroke_orient_pixels),
+        key=lambda sop: sop[1] and orient_image.getpixel(to_2d(sop[1], orient_image))[:3])}
+
+    ordered_strokes = [orient_color_to_strokes[c] for c in
+        sorted(orient_color_to_strokes.keys(),
+        key=lambda c: colorsys.rgb_to_hsv(*c)[::-1] if c else (1.0, 1.0, 1.0))]
+
+    return ordered_strokes

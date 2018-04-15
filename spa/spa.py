@@ -22,8 +22,10 @@ colors = {
 }
 
 align = type('Enum', (), {'lo': -3, 'mid': -2, 'hi': -1})
-orient = type('Enum', (), {e: i for i, e in enumerate(['none', 'cw', 'ccw'])})
-imtype = type('Enum', (), {e: i for i, e in enumerate(['input', 'output', 'temp', 'stencil', 'test'])})
+orient = type('Enum', (), {e: i for i, e in
+    enumerate(['none', 'cw', 'ccw'])})
+imtype = type('Enum', (), {e: i for i, e in
+    enumerate(['input', 'output', 'temp', 'stencil', 'test'])})
 
 ### Module Functions ###
 
@@ -90,6 +92,8 @@ def cache(cache_id):
                 return result
             else:
                 result = func(image, *args, **kwargs)
+                if not os.path.exists(os.path.dirname(cache_path)):
+                    os.makedirs(os.path.dirname(cache_path))
                 with open(cache_path, 'w') as cache_file:
                     json.dump(result, cache_file)
                 return result
