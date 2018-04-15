@@ -1,6 +1,6 @@
 __doc__ = '''Module for the Image Processing Functionality'''
 
-import sys, colorsys, itertools
+import sys, colorsys, collections
 import spa
 from vector import vector
 
@@ -260,9 +260,10 @@ def order_cell_strokes(image, orient_image, strokes):
     # TODO(JRC): Add a check here that ensures that all of the non-opaque
     # pixels are used in the given 'orient_image'.
 
-    orient_color_to_strokes = {k: list(sp[0] for sp in g) for k, g in
-        itertools.groupby(zip(strokes, stroke_orient_pixels),
-        key=lambda sop: sop[1] and orient_image.getpixel(to_2d(sop[1], orient_image))[:3])}
+    orient_color_to_strokes = collections.defaultdict(list)
+    for stroke, orient_pixel in zip(strokes, stroke_orient_pixels):
+        orient_color = orient_image.getpixel(to_2d(orient_pixel, orient_image))[:3]
+        orient_color_to_strokes[orient_color].append(stroke)
 
     ordered_strokes = [orient_color_to_strokes[c] for c in
         sorted(orient_color_to_strokes.keys(),
