@@ -2,104 +2,112 @@
 
 __doc__ = '''Module for "SPA" Console Application'''
 
-import os, math
+import os, math, argparse, logging
 import spa
 from PIL import Image
 
 ### Main Entry Point ###
 
 def main():
-    base_name = 'test1'
-    base_image = spa.read_image('%s_cells.png' % base_name, spa.imtype.test)
-    stroke_image = spa.read_image('%s_strokes.png' % base_name, spa.imtype.test)
-    pop_image = spa.read_image('orange_star.png', spa.imtype.stencil)
-    out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
+    # Argument Parsing #
 
-    movie = spa.movie(out_image)
+    parser = argparse.ArgumentParser(description=
+        'CLI for "S(equential)P(icture)A(malgamator)" Library')
 
-    # Current Test #
+    parser.add_argument('-f', '--fps', dest='fps', nargs='?',
+        type=int,
+        default=60,
+        help='The framerate (in frames per second) of the output movie, '
+        'which defaults to 60.')
+    # parser.add_argument('-q', '--quality', dest='quality', nargs='?',
+    #     type=int,
+    #     default=1,
+    #     choices=[0, 1],
+    #     help='The level of quality present in the result movie. This '
+    #     'argument defaults to the highest available quality value.')
 
-    '''
-    movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image,
-        stroke_image=stroke_image, stroke_serial=False,
-        stroke_color=spa.color('black'), **k), 2.0)
-    movie.add_sequence(lambda pf, **k: spa.fx.pop(base_image, base_image,
-        pop_rate=10, pop_scale=0.05, pop_velocity=0.025, pop_rotation=270,
-        pop_stencil=pop_image, **k), 0.5)
-    movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.1)
-    '''
+    # parser.add_argument('-e', '--encoding', dest='encoding', nargs='?',
+    #     type=str,
+    #     default='mp4',
+    #     choices=['mp4', 'gif'],
+    #     help='The type of encoding that will be used for the generated movie. '
+    #     'The default encoding type is "mp4".')
+    # parser.add_argument('-o', '--output', dest='output', nargs='?',
+    #     type=argparse.FileType('w+'),
+    #     default=os.path.join(os.getcwd(), 'output.mp4'),
+    #     help='The path to the output file for the generated movie. By default, '
+    #     'this path will be set to be a file named "output.mp4" in the current '
+    #     'working directory.')
+    # parser.add_argument('-d', '--outdir', dest='outdir', nargs='?',
+    #     type=str,
+    #     default='',
+    #     help='The path to the output directory that contains all of the '
+    #     'temporary/intermediate files generated for the movie. This argument '
+    #     'is generally only specified when generating large movie files. '
+    #     'By default, this value is set to "spa/output/(output_name)".')
 
-    # Stroke Test #
+    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
+        default=False,
+        help='If specified, this flag indicates that the script should '
+        'generate verbose program output.')
 
-    movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image,
-        stroke_image=stroke_image, stroke_serial=False,
-        stroke_color=spa.color('black'), **k), 3.0)
-    movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.5)
+    parser.add_argument('input',
+        type=argparse.FileType('r'),
+        help='The path to the input file used to generate this movie. This '
+        'file should contain a Python script that produces a "spa.movie" '
+        'object called "movie", which this script will use to generate the '
+        'output.')
 
-    # Scale Test #
+    # Argument Handling #
 
-    '''
-    movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
-    movie.add_sequence(lambda pf, **k: spa.fx.scale(pf, lambda fu: 1.0+0.5*math.cos(math.pi*(fu+0.5)), **k), 1.0)
-    movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.1)
-    '''
+    spa_run = parser.parse_args()
 
-    # Pop Test #
+    logging.basicConfig(format='%(message)s',
+        level=logging.INFO if spa_run.verbose else logging.WARNING)
 
-    '''
-    movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
-    movie.add_sequence(lambda pf, **k: spa.fx.pop(pf, pf, pop_rate=15, pop_scale=0.03, **k), 0.5)
-    movie.add_sequence(lambda pf, **k: spa.fx.still(pf, **k), 0.1)
-    '''
+    spa_run.input.close()
+    spa_run.input = os.path.realpath(spa_run.input.name)
+    # spa_run.output.close()
+    # spa_run.output = os.path.realpath(spa_run.output.name)
 
-    # Fade Test #
+    # spa_run.outdir = spa_run.outdir or \
+    #     os.path.join(spa.output_dir, os.path.splitext(spa_run.output)[0])
+    # if not os.path.exists(spa_run.outdir):
+    #     os.makedirs(spa_run.outdir)
 
-    '''
-    movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
-    movie.add_sequence(lambda pf, nf, **k: spa.fx.fade(pf, nf, fade_color=spa.color('white'), **k), 2.0)
-    movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
-    '''
 
-    # Mock Final #
+    # Script Behavior #
 
-    '''
-    canvas_scale = 1.50
-    embed_scale = 0.9 * canvas_scale
-    canvas_color = spa.color('white')
+    input_valid = True
+    try:
+        input_vars = {}
+        execfile(spa_run.input, input_vars)
+    except Exception as e:
+        logging.error(('Unable to execute input file "{0}"; '
+            'error synopsis below.').format(spa_run.input))
+        logging.error(str(e))
+        input_valid = False
 
-    # TODO(JRC): Refine the functions used here to have a bit more "pop"!
-    ease_in = lambda fu: 1.0 - (embed_scale - 1.0) * math.sin(1.5 * math.pi * fu)
-    ease_out = lambda fu: 1.0 - (embed_scale - 1.0) * math.sin(1.5 * math.pi * fu)
+    if input_valid and 'movie' not in input_vars:
+        logging.error(('Unable to generate movie from "{0}"; '
+            'script fails to generated "movie" variable.').format(spa_run.input))
+        input_valid = False
 
-    base_image = spa.read_image('logo_silh_small.png')
-    pop_image = spa.read_image('blue_star.png', spa.imtype.stencil)
+    if input_valid and not isinstance(input_vars.get('movie', False), spa.movie):
+        logging.error(('Unable to generate movie from "{0}"; '
+            'script "movie" variable is not a "spa.movie".').format(spa_run.input))
+        input_valid = False
 
-    canvas_image = Image.new('RGBA',
-        spa.imp.to_pixel(canvas_scale * spa.vector(2, *base_image.size)),
-        color=canvas_color)
+    movie_rendered = False
+    if input_valid:
+        movie = input_vars['movie']
+        # movie_rendered = movie.render(spa_run.outdir, fps=spa_run.fps, log=spa_run.verbose)
+        movie_rendered = movie.render(os.path.splitext(os.path.basename(spa_run.input))[0], fps=spa_run.fps, log=spa_run.verbose)
+        if not movie_rendered:
+            logging.error(('Unable to generate movie from "{}"; '
+                'rendering process failed.').format(spa_run.input))
 
-    over_image = spa.read_image('logo_combo_small.png')
-    over_image = over_image.resize(
-        spa.imp.to_pixel(embed_scale * spa.vector(2, *base_image.size)),
-        resample=Image.LANCZOS)
-
-    over_frame = canvas_image.copy()
-    over_offset = spa.imp.calc_alignment(spa.vector(2, spa.align.mid),
-        canvas_image, over_image)
-    over_frame.paste(over_image, spa.imp.to_pixel(over_offset), over_image)
-
-    over_frame.save(os.path.join(spa.output_dir, 'over_test.png'))
-
-    # TODO(JRC): Fix up issues with scaling the images and its interference
-    # with the loops for the various component contours.
-    movie = spa.movie(canvas_image)
-    # movie.add_sequence(lambda pf, **k: spa.fx.sstroke(pf, base_image, stroke_serial=False, **k), 2.0)
-    # movie.add_sequence(lambda pf, **k: spa.fx.scale(pf, ease_in, **k), 1.0)
-    movie.add_sequence(lambda pf, **k: spa.fx.pop(over_frame, over_image, pop_rate=15, pop_scale=0.06, pop_stencil=pop_image, **k), 0.5)
-    # movie.add_sequence(lambda pf, **k: spa.fx.scale(pf, ease_in, **k), 1.0)
-    '''
-
-    assert movie.render('test', fps=60, log=True), 'Failed to render movie.'
+    return 0 if movie_rendered else 1
 
 ### Miscellaneous ###
 
