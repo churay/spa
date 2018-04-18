@@ -1,6 +1,6 @@
 __doc__ = '''Module for SPA ((Sequential Picture Amalgamator)) Globals'''
 
-import os, sys, collections, time, json, subprocess
+import os, sys, shutil, collections, logging, time, json, subprocess
 from PIL import Image
 
 ### Module Constants ###
@@ -137,3 +137,35 @@ def log(func):
         return result
 
     return log_decorator
+
+def touch(path, is_dir=False, force=False):
+    path_dir = os.path.realpath(path)
+    if not is_dir: path_dir = os.path.dirname(path_dir)
+
+    touch_succeeded = True
+    if os.path.exists(path):
+        if force:
+            try:
+                if os.path.isfile(path): os.remove(path)
+                else: shutil.rmtree(path)
+            except OSError as e:
+                logging.warning(('Could not force removal of path at "{0}" due '
+                    'to OS error; please check path permissions.').format(path))
+                touch_succeeded = False
+        elif not (os.path.isdir if is_dir else os.path.isfile)(path):
+            logging.warning(('Touched path "{0}" exists, but is of '
+                'wrong type "{1}".').format(path, 'dir' if is_dir else 'file'))
+            touch_succeeded = False
+
+    if not os.path.exists(path):
+        try:
+            if not os.path.exists(path_dir):
+                os.makedirs(path_dir)
+            if not is_dir:
+                with open(path, "w+") as type_file: pass
+        except OSError as e:
+            logging.warning(('Could not touch path at "{0}" due to OS error; '
+                'please check path permissions.').format(path))
+            touch_succeeded = False
+
+    return touch_succeeded

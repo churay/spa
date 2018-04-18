@@ -33,8 +33,15 @@ class movie(object):
         self._filters[index].pop(subindex)
 
     @spa.log
-    def render(self, movie_name, fps=60, **kwargs):
+    def render(self, file_path, data_path=None, fps=60, **kwargs):
         fself = movie.render
+
+        fself.log('Creating Data Paths', 1)
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        data_path = data_path or os.path.join(spa.output_dir, file_name)
+        if not (spa.touch(file_path, is_dir=False, force=True) and
+                spa.touch(data_path, is_dir=True, force=True)):
+            return False
 
         # NOTE(JRC): Processing one sequence type per loop allows the sequences
         # to be processed before the transitions.
@@ -80,28 +87,24 @@ class movie(object):
 
         fself.log('Rendering Movie', 1)
 
-        movie_dir = os.path.join(spa.output_dir, movie_name)
-        shutil.rmtree(movie_dir, True)
-        os.makedirs(movie_dir)
-
         fself.log('Rendering Sequences', 2)
         seq_paths = []
         for seq_index, (_, duration) in enumerate(self._sequences):
             fself.log('Rendering Sequence #%d' % (seq_index + 1), 3)
-            seq_path = os.path.join(movie_dir, '{0}-{1}.mp4'.format(movie_name, seq_index))
-            seq_tmpl = os.path.join(movie_dir, '{0}-{1}-%d.png'.format(movie_name, seq_index))
+            seq_path = os.path.join(data_path, '{0}-{1}.mp4'.format(file_name, seq_index))
+            seq_tmpl = os.path.join(data_path, '{0}-{1}-%d.png'.format(file_name, seq_index))
             seq_fps = len(seq_frame_lists[seq_index]) / float(duration)
 
             for frame_index, frame in enumerate(seq_frame_lists[seq_index]):
-                frame.save(os.path.join(movie_dir, seq_tmpl % frame_index))
+                frame.save(os.path.join(data_path, seq_tmpl % frame_index))
 
             seq_output = ffmpeg.render(seq_path, seq_tmpl, fps=seq_fps)
             if not seq_output: return False
 
             seq_paths.append(seq_path)
 
-        movie_path = os.path.join(movie_dir, '{0}.mp4'.format(movie_name))
-        temp_path = os.path.join(movie_dir, '.{0}.mp4'.format(movie_name))
+        movie_path = os.path.join(data_path, '{0}.mp4'.format(file_name))
+        temp_path = os.path.join(data_path, '.{0}.mp4'.format(file_name))
 
         fself.log('Concatenating Sequences', 2)
         shutil.copy2(seq_paths[0], movie_path)
@@ -110,6 +113,7 @@ class movie(object):
             seq_concat = ffmpeg.concat(temp_path, movie_path, seq_path)
             if not seq_concat: return False
             shutil.copy2(temp_path, movie_path)
+        shutil.copy2(movie_path, file_path)
 
         return True
 

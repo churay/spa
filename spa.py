@@ -32,19 +32,19 @@ def main():
     #     choices=['mp4', 'gif'],
     #     help='The type of encoding that will be used for the generated movie. '
     #     'The default encoding type is "mp4".')
-    # parser.add_argument('-o', '--output', dest='output', nargs='?',
-    #     type=argparse.FileType('w+'),
-    #     default=os.path.join(os.getcwd(), 'output.mp4'),
-    #     help='The path to the output file for the generated movie. By default, '
-    #     'this path will be set to be a file named "output.mp4" in the current '
-    #     'working directory.')
-    # parser.add_argument('-d', '--outdir', dest='outdir', nargs='?',
-    #     type=str,
-    #     default='',
-    #     help='The path to the output directory that contains all of the '
-    #     'temporary/intermediate files generated for the movie. This argument '
-    #     'is generally only specified when generating large movie files. '
-    #     'By default, this value is set to "spa/output/(output_name)".')
+    parser.add_argument('-o', '--output', dest='output', nargs='?',
+        type=argparse.FileType('w+'),
+        default=os.path.join(os.getcwd(), 'output.mp4'),
+        help='The path to the output file for the generated movie. By default, '
+        'this path will be set to be a file named "output.mp4" in the current '
+        'working directory.')
+    parser.add_argument('-d', '--outdir', dest='outdir', nargs='?',
+        type=str,
+        default='',
+        help='The path to the output directory that contains all of the '
+        'temporary/intermediate files generated for the movie. This argument '
+        'is generally only specified when generating large movie files. '
+        'By default, this value is set to "spa/output/(output_name)".')
 
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
         default=False,
@@ -67,14 +67,8 @@ def main():
 
     spa_run.input.close()
     spa_run.input = os.path.realpath(spa_run.input.name)
-    # spa_run.output.close()
-    # spa_run.output = os.path.realpath(spa_run.output.name)
-
-    # spa_run.outdir = spa_run.outdir or \
-    #     os.path.join(spa.output_dir, os.path.splitext(spa_run.output)[0])
-    # if not os.path.exists(spa_run.outdir):
-    #     os.makedirs(spa_run.outdir)
-
+    spa_run.output.close()
+    spa_run.output = os.path.realpath(spa_run.output.name)
 
     # Script Behavior #
 
@@ -101,8 +95,8 @@ def main():
     movie_rendered = False
     if input_valid:
         movie = input_vars['movie']
-        # movie_rendered = movie.render(spa_run.outdir, fps=spa_run.fps, log=spa_run.verbose)
-        movie_rendered = movie.render(os.path.splitext(os.path.basename(spa_run.input))[0], fps=spa_run.fps, log=spa_run.verbose)
+        movie_rendered = movie.render(spa_run.output, data_path=spa_run.outdir,
+            fps=spa_run.fps, log=spa_run.verbose)
         if not movie_rendered:
             logging.error(('Unable to generate movie from "{}"; '
                 'rendering process failed.').format(spa_run.input))

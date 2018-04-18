@@ -58,9 +58,10 @@ local_settings.py
 venv/
 
 # Other files
-out/
 *.swp
 *.swo
 
 # Project specific
 tmp/
+out/
+*.mp4
