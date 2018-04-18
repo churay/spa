@@ -1,6 +1,7 @@
 __doc__ = '''Module for SPA ((Sequential Picture Amalgamator)) Globals'''
 
-import os, sys, shutil, collections, logging, time, json, subprocess
+import os, sys, shutil, collections, time, json, subprocess
+import logging
 from PIL import Image
 
 ### Module Constants ###
@@ -11,6 +12,10 @@ output_dir = os.path.join(base_dir, 'out')
 temp_dir = os.path.join(base_dir, 'tmp')
 stencil_dir = os.path.join(input_dir, 'stencils')
 test_dir = os.path.join(input_dir, 'tests')
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(format='%(message)s', level=logging.DEBUG,
+    disable_existing_loggers=False)
 
 colors = {
     'red':        (255,   0,   0),
@@ -104,7 +109,7 @@ def cache(cache_id):
 def log(func):
     log_stack = []
     def do_log(text, level=1):
-        def print_top_log(is_start=False, is_end=False):
+        def log_top(is_start=False, is_end=False):
             level = len(log_stack) - 1
             level_text, level_combo, level_start = log_stack[-1]
             if is_end: log_stack.pop()
@@ -113,22 +118,21 @@ def log(func):
             level_title = ('%s' if is_start else '(%s)') % level_text
             level_timing = ' {%.2es}' % (time.clock() - level_start) if is_end else ''
 
-            print '%s[%d.%s] %s%s' % (level_pad, level, level_combo, level_title, level_timing)
+            logger.info('%s[%d.%s] %s%s' % \
+                (level_pad, level, level_combo, level_title, level_timing))
 
         level = clamp(level, 0, len(log_stack) + 1)
         combo = log_stack[level][1] + 1 if level < len(log_stack) else 0
         if log_stack and level >= len(log_stack):
-            print_top_log(is_start=True)
+            log_top(is_start=True)
         else:
             for higher_index, higher_level in enumerate(range(level, len(log_stack))):
-                print_top_log(is_start=(higher_index == 0), is_end=True)
+                log_top(is_start=(higher_index == 0), is_end=True)
 
         log_stack.append((text, combo, time.clock()))
-    def skip_log(text, level=1):
-        pass
 
     def log_decorator(*args, **kwargs):
-        setattr(log_decorator, 'log', do_log if kwargs.pop('log', False) else skip_log)
+        setattr(log_decorator, 'log', do_log)
 
         log_decorator.log('Log for "%s"' % func.__name__, 0)
         result = func(*args, **kwargs)

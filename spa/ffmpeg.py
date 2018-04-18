@@ -10,15 +10,11 @@ please refer to the following documentation pages:
 '''
 
 import os, sys, subprocess
-
-### Module Constants ###
-
-debug = False
-quality = True
+import spa
 
 ### Module Functions ###
 
-def ffmpeg(path, args):
+def ffmpeg(path, args, quality=0):
     '''NOTE(JRC): This is a raw FFMPEG call function. This function should
     only be used for internal one-off invocations.'''
     ffmpeg_args = ['ffmpeg']
@@ -26,28 +22,33 @@ def ffmpeg(path, args):
     ffmpeg_args.extend(args)
     ffmpeg_args.extend(['-r', 60, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y'])
 
-    ffmpeg_args.extend(['-crf', 0 if quality else 22])
-    ffmpeg_args.extend([] if debug else ['-loglevel', '-8'])
+    ffmpeg_args.extend(['-crf', 0 if quality == 0 else 22])
+    ffmpeg_args.extend(['-loglevel', '-8'])
 
     ffmpeg_args.append(path)
 
     ffmpeg_call = map(str, ffmpeg_args)
-    if debug: print ' '.join(ffmpeg_call)
-    return subprocess.call(ffmpeg_call) == 0
 
-def render(path, template, fps=60.0):
+    # TODO(JRC): Re-enable debugging outputs for the 'ffmpeg' call here.
+    ffmpeg_status = True
+    try: subprocess.check_output(ffmpeg_call)
+    except: ffmpeg_status = False
+
+    return ffmpeg_status
+
+def render(path, template, fps=60.0, quality=0):
     render_args = [
         '-framerate', fps,
         '-i', template,
     ]
 
-    return ffmpeg(path, render_args)
+    return ffmpeg(path, render_args, quality=quality)
 
-def concat(path, lhs_path, rhs_path):
+def concat(path, lhs_path, rhs_path, quality=0):
     concat_args = [
         '-i', lhs_path,
         '-i', rhs_path,
         '-filter_complex', '[0:v:0][1:v:0]concat=n=2:v=1[v]', '-map', '[v]',
     ]
 
-    return ffmpeg(path, concat_args)
+    return ffmpeg(path, concat_args, quality=quality)
