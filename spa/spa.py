@@ -1,8 +1,12 @@
 __doc__ = '''Module for SPA ((Sequential Picture Amalgamator)) Globals'''
 
-import os, sys, shutil, collections, time, json, subprocess
-import logging
+import os, sys, shutil, logging, collections, time, json, subprocess
 from PIL import Image
+
+### Module Setup ###
+
+log = logging.getLogger('spa')
+log.addHandler(logging.NullHandler())
 
 ### Module Constants ###
 
@@ -12,10 +16,6 @@ output_dir = os.path.join(base_dir, 'out')
 temp_dir = os.path.join(base_dir, 'tmp')
 stencil_dir = os.path.join(input_dir, 'stencils')
 test_dir = os.path.join(input_dir, 'tests')
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(message)s', level=logging.DEBUG,
-    disable_existing_loggers=False)
 
 colors = {
     'red':        (255,   0,   0),
@@ -106,7 +106,7 @@ def cache(cache_id):
         return cache_func
     return cache_decorator
 
-def log(func):
+def log_f(func):
     log_stack = []
     def do_log(text, level=1):
         def log_top(is_start=False, is_end=False):
@@ -118,7 +118,7 @@ def log(func):
             level_title = ('%s' if is_start else '(%s)') % level_text
             level_timing = ' {%.2es}' % (time.clock() - level_start) if is_end else ''
 
-            logger.info('%s[%d.%s] %s%s' % \
+            log.info('%s[%d.%s] %s%s' % \
                 (level_pad, level, level_combo, level_title, level_timing))
 
         level = clamp(level, 0, len(log_stack) + 1)

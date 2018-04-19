@@ -32,7 +32,7 @@ class movie(object):
     def rem_filter(self, index=-1, subindex=-1):
         self._filters[index].pop(subindex)
 
-    @spa.log
+    @spa.log_f
     def render(self, file_path, data_path=None, fps=60, quality=0):
         fself = movie.render
 

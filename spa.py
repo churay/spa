@@ -62,7 +62,9 @@ def main():
 
     spa_run = parser.parse_args()
 
-    spa.logger.setLevel(logging.DEBUG if spa_run.verbose else logging.WARNING)
+    logging.basicConfig(format='%(message)s',
+        level=logging.DEBUG if spa_run.verbose else logging.WARNING)
+    logging.getLogger('PIL').setLevel(logging.CRITICAL)
 
     spa_run.input.close()
     spa_run.input = os.path.realpath(spa_run.input.name)
@@ -71,36 +73,29 @@ def main():
 
     # Script Behavior #
 
-    input_valid = True
     try:
         input_vars = {}
         execfile(spa_run.input, input_vars)
     except Exception as e:
-        spa.logger.error(('Unable to execute input file "{0}"; '
-            'error synopsis below.').format(spa_run.input))
-        spa.logger.error(str(e))
-        input_valid = False
+        spa.log.error(('Error in SPA execution file "{0}"; '
+            'synopsis below.').format(spa_run.input))
+        raise e
 
-    if input_valid and 'movie' not in input_vars:
-        spa.logger.error(('Unable to generate movie from "{0}"; '
-            'script fails to generated "movie" variable.').format(spa_run.input))
-        input_valid = False
+    if 'movie' not in input_vars:
+        raise ValueError(('Error in SPA execution file "{0}"; '
+            'file fails to define a "movie" variable.').format(spa_run.input))
+    if not isinstance(input_vars.get('movie', False), spa.movie):
+        raise ValueError(('Error in SPA execution file "{0}"; '
+            'file defines "movie" variable as non-"spa.movie" type.').format(spa_run.input))
 
-    if input_valid and not isinstance(input_vars.get('movie', False), spa.movie):
-        spa.logger.error(('Unable to generate movie from "{0}"; '
-            'script "movie" variable is not a "spa.movie".').format(spa_run.input))
-        input_valid = False
+    movie_rendered = input_vars['movie'].render(
+        spa_run.output, data_path=spa_run.outdir,
+        fps=spa_run.fps, quality=spa_run.quality)
+    if not movie_rendered:
+        raise RuntimeError('Unable to generate movie from "{0}"; '
+            'rendering process failed'.format(spa_run.input))
 
-    movie_rendered = False
-    if input_valid:
-        movie = input_vars['movie']
-        movie_rendered = movie.render(spa_run.output, data_path=spa_run.outdir,
-            fps=spa_run.fps, quality=spa_run.quality)
-        if not movie_rendered:
-            spa.logger.error(('Unable to generate movie from "{}"; '
-                'rendering process failed.').format(spa_run.input))
-
-    return 0 if movie_rendered else 1
+    return 0
 
 ### Miscellaneous ###
 
