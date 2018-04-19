@@ -129,7 +129,7 @@ def cache(cache_id):
                 return result
             else:
                 result = func(image, *args, **kwargs)
-                touch(cache_path, is_dir=True, force=False)
+                touch(cache_path, is_dir=False, force=False)
                 with open(cache_path, 'w') as cache_file:
                     json.dump(result, cache_file)
                 return result
