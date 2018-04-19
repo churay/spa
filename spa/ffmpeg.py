@@ -22,7 +22,7 @@ def ffmpeg(path, args, quality=0):
     ffmpeg_args.extend(args)
     ffmpeg_args.extend(['-r', 60, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y'])
 
-    ffmpeg_args.extend(['-crf', 0 if quality == 0 else 22])
+    ffmpeg_args.extend(['-crf', 0 if quality == 1 else 22])
     ffmpeg_args.extend(['-loglevel', '-8'])
 
     ffmpeg_args.append(path)
