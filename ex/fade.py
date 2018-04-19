@@ -1,7 +1,7 @@
 import spa
 from PIL import Image
 
-base_image = spa.read_image('test4.png', spa.imtype.test)
+base_image = spa.load('test4.png', spa.imtype.test)
 out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
 
 movie = spa.movie(out_image)

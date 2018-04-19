@@ -2,7 +2,7 @@
 
 __doc__ = '''Module for "SPA" Console Application'''
 
-import os, math, argparse, logging
+import os, math, argparse, logging, subprocess
 import spa
 from PIL import Image
 
@@ -76,11 +76,10 @@ def main():
     try:
         input_vars = {}
         execfile(spa_run.input, input_vars)
-    except Exception as e:
+    except Exception:
         spa.log.error(('Error in SPA execution file "{0}"; '
             'synopsis below.').format(spa_run.input))
-        raise e
-
+        raise
     if 'movie' not in input_vars:
         raise ValueError(('Error in SPA execution file "{0}"; '
             'file fails to define a "movie" variable.').format(spa_run.input))
@@ -88,12 +87,20 @@ def main():
         raise ValueError(('Error in SPA execution file "{0}"; '
             'file defines "movie" variable as non-"spa.movie" type.').format(spa_run.input))
 
-    movie_rendered = input_vars['movie'].render(
-        spa_run.output, data_path=spa_run.outdir,
-        fps=spa_run.fps, quality=spa_run.quality)
-    if not movie_rendered:
-        raise RuntimeError('Unable to generate movie from "{0}"; '
-            'rendering process failed'.format(spa_run.input))
+    try:
+        input_vars['movie'].render(
+            spa_run.output, data_path=spa_run.outdir,
+            fps=spa_run.fps, quality=spa_run.quality)
+    except subprocess.CalledProcessError:
+        spa.log.error(('Error processing SPA execution file "{0}"; '
+            'the target movie failed to render with "ffmpeg"; '
+            'synopsis below.').format(spa_run.input))
+        raise
+    except Exception:
+        spa.log.error(('Error processing SPA execution file "{0}"; '
+            'the "spa.movie.render" function encountered errors; '
+            'synopsis below.').format(spa_run.input))
+        raise
 
     return 0
 

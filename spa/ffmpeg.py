@@ -27,14 +27,8 @@ def ffmpeg(path, args, quality=0):
 
     ffmpeg_args.append(path)
 
-    ffmpeg_call = map(str, ffmpeg_args)
-
-    # TODO(JRC): Re-enable debugging outputs for the 'ffmpeg' call here.
-    ffmpeg_status = True
-    try: subprocess.check_output(ffmpeg_call)
-    except: ffmpeg_status = False
-
-    return ffmpeg_status
+    ffmpeg_args = map(str, ffmpeg_args)
+    subprocess.check_output(ffmpeg_args, stderr=subprocess.STDOUT)
 
 def render(path, template, fps=60.0, quality=0):
     render_args = [
@@ -42,7 +36,7 @@ def render(path, template, fps=60.0, quality=0):
         '-i', template,
     ]
 
-    return ffmpeg(path, render_args, quality=quality)
+    ffmpeg(path, render_args, quality=quality)
 
 def concat(path, lhs_path, rhs_path, quality=0):
     concat_args = [
@@ -51,4 +45,4 @@ def concat(path, lhs_path, rhs_path, quality=0):
         '-filter_complex', '[0:v:0][1:v:0]concat=n=2:v=1[v]', '-map', '[v]',
     ]
 
-    return ffmpeg(path, concat_args, quality=quality)
+    ffmpeg(path, concat_args, quality=quality)

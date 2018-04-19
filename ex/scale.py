@@ -2,7 +2,7 @@ import math
 import spa
 from PIL import Image
 
-base_image = spa.read_image('test2_cells.png', spa.imtype.test)
+base_image = spa.load('test2_cells.png', spa.imtype.test)
 out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
 
 movie = spa.movie(out_image)

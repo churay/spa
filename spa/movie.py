@@ -32,11 +32,10 @@ class movie(object):
     def rem_filter(self, index=-1, subindex=-1):
         self._filters[index].pop(subindex)
 
-    @spa.log_f
     def render(self, file_path, data_path=None, fps=60, quality=0):
-        fself = movie.render
+        ll = spa.level_logger('movie.render')
 
-        fself.log('Creating Data Paths', 1)
+        ll.log('Creating Data Paths', 1)
         file_name = os.path.splitext(os.path.basename(file_path))[0]
         data_path = data_path or os.path.join(spa.output_dir, file_name)
         if not (spa.touch(file_path, is_dir=False, force=True) and
@@ -45,11 +44,11 @@ class movie(object):
 
         # NOTE(JRC): Processing one sequence type per loop allows the sequences
         # to be processed before the transitions.
-        fself.log('Generating Sequences', 1)
+        ll.log('Generating Sequences', 1)
         seq_frame_lists = [[] for s in self._sequences]
         for iter_seq_type in range(1, 3):
             iter_seq_str = 'Sequence' if iter_seq_type == 1 else 'Transition'
-            fself.log('Processing %ss' % iter_seq_str, 2)
+            ll.log('Processing %ss' % iter_seq_str, 2)
             for seq_index, (seq_func, seq_duration) in enumerate(self._sequences):
                 adj_frames = []
                 for adj_index in [seq_index+o for o in [-1, 1]]:
@@ -63,15 +62,15 @@ class movie(object):
                     adj_frames.append(adj_frame)
 
                 if self._get_seq_type(seq_index) == iter_seq_type:
-                    fself.log('Producing Frames for Sequence #%d' % (seq_index + 1), 3)
+                    ll.log('Producing Frames for Sequence #%d' % (seq_index + 1), 3)
                     seq_args = tuple(adj_frames)[:iter_seq_type]
                     seq_kwargs = {'num_frames': int(math.ceil(fps * seq_duration))}
                     seq_frame_lists[seq_index].extend(seq_func(*seq_args, **seq_kwargs))
 
-        fself.log('Applying Filters', 1)
+        ll.log('Applying Filters', 1)
         for seq_index, (seq_frames, seq_filters) in enumerate(zip(seq_frame_lists, self._filters)):
             for filt_index, (filt_func, window) in enumerate(seq_filters):
-                fself.log('Filtering Sequence #%d w/ Filter #%d' % (seq_index, filt_index), 2)
+                ll.log('Filtering Sequence #%d w/ Filter #%d' % (seq_index, filt_index), 2)
                 frame_window = tuple(int(m*len(seq_frames)) for m in window)
                 filt_frames = seq_frames[frame_window[0]:frame_window[1]]
                 new_frames = filt_func(filt_frames)
@@ -79,18 +78,18 @@ class movie(object):
         '''
         # TODO(JRC): Fix a bug in this code that causes sequences with singular
         # frames to be deleted when adjacent to sequences with duplicates.
-        fself.log('Smoothing Sequence Seams', 1)
+        ll.log('Smoothing Sequence Seams', 1)
         for prev_frames, curr_frames in zip(seq_frame_lists, seq_frame_lists[1:]):
             if prev_frames[-1].tobytes() == curr_frames[0].tobytes():
                 prev_frames.pop()
         '''
 
-        fself.log('Rendering Movie', 1)
+        ll.log('Rendering Movie', 1)
 
-        fself.log('Rendering Sequences', 2)
+        ll.log('Rendering Sequences', 2)
         seq_paths = []
         for seq_index, (_, duration) in enumerate(self._sequences):
-            fself.log('Rendering Sequence #%d' % (seq_index + 1), 3)
+            ll.log('Rendering Sequence #%d' % (seq_index + 1), 3)
             seq_path = os.path.join(data_path, '{0}-{1}.mp4'.format(file_name, seq_index))
             seq_tmpl = os.path.join(data_path, '{0}-{1}-%d.png'.format(file_name, seq_index))
             seq_fps = len(seq_frame_lists[seq_index]) / float(duration)
@@ -98,20 +97,17 @@ class movie(object):
             for frame_index, frame in enumerate(seq_frame_lists[seq_index]):
                 frame.save(os.path.join(data_path, seq_tmpl % frame_index))
 
-            seq_output = ffmpeg.render(seq_path, seq_tmpl, fps=seq_fps, quality=quality)
-            if not seq_output: return False
-
+            ffmpeg.render(seq_path, seq_tmpl, fps=seq_fps, quality=quality)
             seq_paths.append(seq_path)
 
         movie_path = os.path.join(data_path, '{0}.mp4'.format(file_name))
         temp_path = os.path.join(data_path, '.{0}.mp4'.format(file_name))
 
-        fself.log('Concatenating Sequences', 2)
+        ll.log('Concatenating Sequences', 2)
         shutil.copy2(seq_paths[0], movie_path)
         for seq_index, seq_path in enumerate(seq_paths[1:]):
-            fself.log('Conatenating Sequence #%d' % (seq_index + 2), 3)
-            seq_concat = ffmpeg.concat(temp_path, movie_path, seq_path, quality=quality)
-            if not seq_concat: return False
+            ll.log('Conatenating Sequence #%d' % (seq_index + 2), 3)
+            ffmpeg.concat(temp_path, movie_path, seq_path, quality=quality)
             shutil.copy2(temp_path, movie_path)
         shutil.copy2(movie_path, file_path)
 

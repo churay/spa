@@ -66,7 +66,7 @@ def distribute(num_items, num_buckets, bucket_limit=float('inf'), is_cyclic=Fals
     # return [list(b) if bucket_limit != 1 else b.pop() for b in buckets]
     return [list(b) for b in buckets]
 
-def read_image(image_name, image_type=imtype.input):
+def load(image_name, image_type=imtype.input):
     type_to_dir = {
         imtype.input: input_dir,
         imtype.output: output_dir,
@@ -75,72 +75,6 @@ def read_image(image_name, image_type=imtype.input):
         imtype.test: test_dir}
 
     return Image.open(os.path.join(type_to_dir[image_type], image_name))
-
-# TODO(JRC): Write a function that colorizes cache files so that they're
-# easier to debug.
-def cache(cache_id):
-    def cache_decorator(func):
-        def cache_func(image, *args, **kwargs):
-            if not hasattr(image, 'filename'): return func(image, *args)
-
-            image_filename = os.path.basename(image.filename)
-            image_name = os.path.splitext(image_filename)[0]
-            cache_path = os.path.join(output_dir,
-                '{0}_{1}.json'.format(image_name, cache_id))
-
-            # If the cache file exists and has been modified more recently
-            # than the source image file, then use the cached result.
-            if os.path.isfile(cache_path) and \
-                    os.path.getmtime(image.filename) < os.path.getmtime(cache_path):
-                with open(cache_path, 'r') as cache_file:
-                    result = json.load(cache_file)
-                return result
-            else:
-                result = func(image, *args, **kwargs)
-                if not os.path.exists(os.path.dirname(cache_path)):
-                    os.makedirs(os.path.dirname(cache_path))
-                with open(cache_path, 'w') as cache_file:
-                    json.dump(result, cache_file)
-                return result
-
-        return cache_func
-    return cache_decorator
-
-def log_f(func):
-    log_stack = []
-    def do_log(text, level=1):
-        def log_top(is_start=False, is_end=False):
-            level = len(log_stack) - 1
-            level_text, level_combo, level_start = log_stack[-1]
-            if is_end: log_stack.pop()
-
-            level_pad = '  ' * level
-            level_title = ('%s' if is_start else '(%s)') % level_text
-            level_timing = ' {%.2es}' % (time.clock() - level_start) if is_end else ''
-
-            log.info('%s[%d.%s] %s%s' % \
-                (level_pad, level, level_combo, level_title, level_timing))
-
-        level = clamp(level, 0, len(log_stack) + 1)
-        combo = log_stack[level][1] + 1 if level < len(log_stack) else 0
-        if log_stack and level >= len(log_stack):
-            log_top(is_start=True)
-        else:
-            for higher_index, higher_level in enumerate(range(level, len(log_stack))):
-                log_top(is_start=(higher_index == 0), is_end=True)
-
-        log_stack.append((text, combo, time.clock()))
-
-    def log_decorator(*args, **kwargs):
-        setattr(log_decorator, 'log', do_log)
-
-        log_decorator.log('Log for "%s"' % func.__name__, 0)
-        result = func(*args, **kwargs)
-        log_decorator.log('End for %s' % func.__name__, 0)
-
-        return result
-
-    return log_decorator
 
 def touch(path, is_dir=False, force=False):
     path_dir = os.path.realpath(path)
@@ -173,3 +107,69 @@ def touch(path, is_dir=False, force=False):
             touch_succeeded = False
 
     return touch_succeeded
+
+# TODO(JRC): Write a function that colorizes cache files so that they're
+# easier to debug.
+def cache(cache_id):
+    def cache_decorator(func):
+        def cache_func(image, *args, **kwargs):
+            if not hasattr(image, 'filename'): return func(image, *args)
+
+            image_filename = os.path.basename(image.filename)
+            image_name = os.path.splitext(image_filename)[0]
+            cache_path = os.path.join(output_dir,
+                '{0}_{1}.json'.format(image_name, cache_id))
+
+            # If the cache file exists and has been modified more recently
+            # than the source image file, then use the cached result.
+            if os.path.isfile(cache_path) and \
+                    os.path.getmtime(image.filename) < os.path.getmtime(cache_path):
+                with open(cache_path, 'r') as cache_file:
+                    result = json.load(cache_file)
+                return result
+            else:
+                result = func(image, *args, **kwargs)
+                touch(cache_path, is_dir=True, force=False)
+                with open(cache_path, 'w') as cache_file:
+                    json.dump(result, cache_file)
+                return result
+
+        return cache_func
+    return cache_decorator
+
+### Module Classes ###
+
+class level_logger(object):
+    def __init__(self, context):
+        self._context = context
+        self._levels = []
+
+        self.log('"{0}" Call'.format(self._context), 0)
+
+    def __del__(self):
+        self.log('"{0}" Call'.format(self._context), 0)
+
+    def log(self, text, level):
+        level = clamp(level, 0, len(self._levels) + 1)
+        is_new_sublevel = level >= len(self._levels)
+
+        sublevel = 0 if is_new_sublevel else self._levels[level][1] + 1
+        if self._levels and is_new_sublevel:
+            self._log(is_start=True)
+        else:
+            for higher_index, _ in enumerate(range(level, len(self._levels))):
+                self._log(is_start=(higher_index == 0), is_end=True)
+
+        self._levels.append((text, sublevel, time.clock()))
+
+    def _log(self, is_start=False, is_end=False):
+        level = len(self._levels) - 1
+        level_text, level_sublevel, level_start = self._levels[-1]
+        if is_end: self._levels.pop()
+
+        level_pad = '  ' * level
+        level_title = ('%s' if is_start else '(%s)') % level_text
+        level_timing = ' {%.2es}' % (time.clock() - level_start) if is_end else ''
+
+        log.info('%s[%d.%s] %s%s' % \
+            (level_pad, level, level_sublevel, level_title, level_timing))

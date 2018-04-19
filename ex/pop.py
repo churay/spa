@@ -1,8 +1,8 @@
 import spa
 from PIL import Image
 
-base_image = spa.read_image('test4.png', spa.imtype.test)
-pop_image = spa.read_image('blue_star.png', spa.imtype.stencil)
+base_image = spa.load('test4.png', spa.imtype.test)
+pop_image = spa.load('blue_star.png', spa.imtype.stencil)
 out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
 
 movie = spa.movie(out_image)

@@ -1,8 +1,8 @@
 import spa
 from PIL import Image
 
-base_image = spa.read_image('test3_cells.png', spa.imtype.test)
-stroke_image = spa.read_image('test3_strokes.png', spa.imtype.test)
+base_image = spa.load('test3_cells.png', spa.imtype.test)
+stroke_image = spa.load('test3_strokes.png', spa.imtype.test)
 out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
 
 movie = spa.movie(out_image)
