@@ -2,7 +2,7 @@
 
 __doc__ = '''Module for "SPA" Console Application'''
 
-import os, math, argparse, logging, subprocess
+import os, sys, math, argparse, logging, subprocess
 import spa
 from PIL import Image
 
@@ -74,7 +74,11 @@ def main():
     # Script Behavior #
 
     try:
-        input_vars = {}
+        input_vars = {
+            '__file__': os.path.realpath(spa_run.input),
+            'PIL': sys.modules['PIL'],
+            'spa': sys.modules['spa'],
+        }
         execfile(spa_run.input, input_vars)
     except Exception:
         spa.log.error(('Error in SPA execution file "{0}"; '
@@ -107,4 +111,4 @@ def main():
 ### Miscellaneous ###
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

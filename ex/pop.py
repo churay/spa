@@ -1,9 +1,8 @@
-import spa
-from PIL import Image
+__doc__ = '''"spa.fx.pop" Example'''
 
 base_image = spa.load('test4.png', spa.imtype.test)
 pop_image = spa.load('blue_star.png', spa.imtype.stencil)
-out_image = Image.new('RGBA', base_image.size, color=spa.color('white'))
+out_image = PIL.Image.new('RGBA', base_image.size, color=spa.color('white'))
 
 movie = spa.movie(out_image)
 movie.add_sequence(lambda pf, **k: spa.fx.still(base_image, **k), 0.1)
