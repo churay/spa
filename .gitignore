@@ -65,3 +65,4 @@ venv/
 tmp/
 out/
 *.mp4
+*.gif

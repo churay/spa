@@ -9,6 +9,12 @@ from PIL import Image
 ### Main Entry Point ###
 
 def main():
+    # Script Setup #
+
+    encoding_map = {
+        'mp4': spa.ffmpeg.encoding.mp4,
+        'gif': spa.ffmpeg.encoding.gif }
+
     # Argument Parsing #
 
     parser = argparse.ArgumentParser(description=
@@ -26,12 +32,12 @@ def main():
         help='The level of quality present in the result movie. This '
         'argument defaults to the highest available quality value.')
 
-    # parser.add_argument('-e', '--encoding', dest='encoding', nargs='?',
-    #     type=str,
-    #     default='mp4',
-    #     choices=['mp4', 'gif'],
-    #     help='The type of encoding that will be used for the generated movie. '
-    #     'The default encoding type is "mp4".')
+    parser.add_argument('-e', '--encoding', dest='encoding', nargs='?',
+        type=str,
+        default='mp4',
+        choices=['mp4', 'gif'],
+        help='The type of encoding that will be used for the generated movie. '
+        'The default encoding type is "mp4".')
     parser.add_argument('-o', '--output', dest='output', nargs='?',
         type=argparse.FileType('w+'),
         default=os.path.join(os.getcwd(), 'output.mp4'),
@@ -94,7 +100,8 @@ def main():
     try:
         input_vars['movie'].render(
             spa_run.output, data_path=spa_run.outdir,
-            fps=spa_run.fps, quality=spa_run.quality)
+            fps=spa_run.fps, quality=spa_run.quality,
+            encoding=encoding_map[spa_run.encoding] )
     except subprocess.CalledProcessError:
         spa.log.error(('Error processing SPA execution file "{0}"; '
             'the target movie failed to render with "ffmpeg"; '

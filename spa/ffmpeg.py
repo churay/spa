@@ -12,6 +12,10 @@ please refer to the following documentation pages:
 import os, sys, subprocess
 import spa
 
+### Module Constants ###
+
+encoding = type('Enum', (), {'mp4': 0, 'gif': 1})
+
 ### Module Functions ###
 
 def ffmpeg(path, args, quality=0):
@@ -21,14 +25,46 @@ def ffmpeg(path, args, quality=0):
 
     ffmpeg_args.extend(args)
     ffmpeg_args.extend(['-r', 60, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y'])
-
     ffmpeg_args.extend(['-crf', 0 if quality == 1 else 22])
-    ffmpeg_args.extend(['-loglevel', '-8'])
-
     ffmpeg_args.append(path)
 
     ffmpeg_args = map(str, ffmpeg_args)
+    # spa.log.debug(' '.join(ffmpeg_args))
     subprocess.check_output(ffmpeg_args, stderr=subprocess.STDOUT)
+
+def encode(path, out_encoding, fps=60.0, quality=0):
+    # NOTE(JRC): The code below was adapted from the tutorial here:
+    # http://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html
+    if out_encoding == encoding.gif:
+        filter_flags = 'fps={0}'.format(fps)
+
+        path_dir, path_base = os.path.dirname(path), os.path.basename(path)
+        temp_path = os.path.join(path_dir, '.{0}'.format(path_base))
+        palette_path = os.path.join(path_dir,
+            '.{0}.png'.format(os.path.splitext(path_base)[0]))
+
+        os.rename(path, temp_path)
+
+        ffmpeg_args = ['ffmpeg']
+        ffmpeg_args.extend(['-i', temp_path])
+        ffmpeg_args.extend(['-vf', '{0},palettegen'.format(filter_flags), '-y'])
+        ffmpeg_args.append(palette_path)
+
+        # spa.log.debug(' '.join(ffmpeg_args))
+        subprocess.check_output(ffmpeg_args, stderr=subprocess.STDOUT)
+
+        ffmpeg_args = ['ffmpeg']
+        ffmpeg_args.extend(['-i', temp_path, '-i', palette_path])
+        ffmpeg_args.extend(['-lavfi', '{0}[x];[x][1:v]paletteuse'.format(filter_flags), '-y'])
+        ffmpeg_args.append(path)
+
+        # spa.log.debug(' '.join(ffmpeg_args))
+        subprocess.check_output(ffmpeg_args, stderr=subprocess.STDOUT)
+
+        # TODO(JRC): Adapt this code so that these files are cleaned up
+        # even if there are errors during processing above.
+        os.remove(palette_path)
+        os.remove(temp_path)
 
 def render(path, template, fps=60.0, quality=0):
     render_args = [

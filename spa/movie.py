@@ -32,7 +32,8 @@ class movie(object):
     def rem_filter(self, index=-1, subindex=-1):
         self._filters[index].pop(subindex)
 
-    def render(self, file_path, data_path=None, fps=60, quality=0):
+    def render(self, file_path, data_path=None, fps=60,
+            encoding=ffmpeg.encoding.mp4, quality=0):
         ll = spa.level_logger('movie.render')
 
         ll.log('Creating Data Paths', 1)
@@ -110,6 +111,9 @@ class movie(object):
             ffmpeg.concat(temp_path, movie_path, seq_path, quality=quality)
             shutil.copy2(temp_path, movie_path)
         shutil.copy2(movie_path, file_path)
+
+        ll.log('Encoding Sequence', 2)
+        ffmpeg.encode(file_path, encoding, fps=fps, quality=quality)
 
         return True
 

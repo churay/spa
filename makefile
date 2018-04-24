@@ -25,4 +25,4 @@ $(OUT_DIR) :
 
 clean :
 	rm -rf $(PROJ_DIR)/*.pyc $(SRC_DIR)/*.pyc $(OUT_DIR)
-	find . -name "*.mp4" -exec rm -f {} \;
+	find . -name "*.mp4" -o -name "*.gif" -exec rm -f {} \;
