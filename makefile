@@ -15,14 +15,17 @@ PROJ_MAIN = $(PROJ_DIR)/spa.py
 
 ### Build Rules ###
 
-.PHONY : %.ex clean
+.PHONY : clean
 
-%.ex : $(EX_DIR)/%.py | $(OUT_DIR)
-	$(PROJ_MAIN) -v -o $(subst .ex,.mp4,$@) $<
+%.mp4 : $(EX_DIR)/%.py $(wildcard $(SRC_DIR)/*.py) | $(OUT_DIR)
+	$(PROJ_MAIN) -e mp4 -v -o $(subst .ex,.mp4,$@) $<
+
+%.gif : $(EX_DIR)/%.py $(wildcard $(SRC_DIR)/*.py) | $(OUT_DIR)
+	$(PROJ_MAIN) -e gif -v -o $(subst .ex,.gif,$@) $<
 
 $(OUT_DIR) :
 	mkdir $@
 
 clean :
 	rm -rf $(PROJ_DIR)/*.pyc $(SRC_DIR)/*.pyc $(OUT_DIR)
-	find . -name "*.mp4" -o -name "*.gif" -exec rm -f {} \;
+	find . \( -name "*.mp4" -o -name "*.gif" \) -exec rm -f {} \;
