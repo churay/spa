@@ -33,10 +33,8 @@ def ffmpeg(path, args, quality=0):
 
 def encode(path, out_encoding, fps=60.0, quality=0):
     if out_encoding == encoding.gif:
-        # NOTE(JRC): THe code below was adapted from the SO answer here:
+        # NOTE(JRC): The code below was adapted from the SO answer here:
         # https://askubuntu.com/a/648604/285545
-        filter_flags = 'fps={0}'.format(fps)
-
         path_dir, path_base = os.path.dirname(path), os.path.basename(path)
         temp_path = os.path.join(path_dir, '.{0}'.format(path_base))
         palette_path = os.path.join(path_dir,
@@ -44,24 +42,14 @@ def encode(path, out_encoding, fps=60.0, quality=0):
 
         os.rename(path, temp_path)
 
-        encode_args = ['ffmpeg']
-        encode_args.extend(['-i', temp_path])
-        encode_args.extend(['-r', '50', '-f', 'image2pipe', '-vcodec', 'ppm'])
-        encode_args.extend(['-', '|'])
-        encode_args.extend(['convert', '-delay', '2', '-loop', '0', '-', path])
+        # TODO: Restrict GIF based on support FPS.
+        gif_fps = 50
 
-        # spa.log.debug(' '.join(encode_args))
-        subprocess.check_output(' '.join(encode_args), stderr=subprocess.STDOUT, shell=True)
-
-        # TODO(JRC): Debug and re-enable the code below since it doesn't
-        # require the use of the 'convert' utility.
-        '''
         # NOTE(JRC): The code below was adapted from the tutorial here:
         # http://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html
         ffmpeg_args = ['ffmpeg']
         ffmpeg_args.extend(['-i', temp_path])
-        ffmpeg_args.extend(['-r', '60', '-framerate', str(fps)])
-        ffmpeg_args.extend(['-vf', '{0},palettegen'.format(filter_flags), '-y'])
+        ffmpeg_args.extend(['-filter:v', 'palettegen', '-y'])
         ffmpeg_args.append(palette_path)
 
         # spa.log.debug(' '.join(ffmpeg_args))
@@ -69,17 +57,15 @@ def encode(path, out_encoding, fps=60.0, quality=0):
 
         ffmpeg_args = ['ffmpeg']
         ffmpeg_args.extend(['-i', temp_path, '-i', palette_path])
-        ffmpeg_args.extend(['-r', '60', '-framerate', str(fps)])
-        ffmpeg_args.extend(['-lavfi', '{0}[x];[x][1:v]paletteuse'.format(filter_flags), '-y'])
+        ffmpeg_args.extend(['-filter_complex', 'fps={0}[x];[x][1:v]paletteuse'.format(gif_fps), '-y'])
         ffmpeg_args.append(path)
 
         # spa.log.debug(' '.join(ffmpeg_args))
         subprocess.check_output(ffmpeg_args, stderr=subprocess.STDOUT)
-        '''
 
         # TODO(JRC): Adapt this code so that these files are cleaned up
         # even if there are errors during processing above.
-        # os.remove(palette_path)
+        os.remove(palette_path)
         os.remove(temp_path)
 
 def render(path, template, fps=60.0, quality=0):
