@@ -33,6 +33,13 @@ def ffmpeg(path, args, quality=0):
 
 def encode(path, out_encoding, fps=60.0, quality=0):
     if out_encoding == encoding.gif:
+        # NOTE(JRC): GIFs only support FPS specified in terms of delay in
+        # an integer number of milliseconds between frames, so we must convert
+        # the given arbitrary FPS value to a valid, GIF-compliant FPS value.
+        # TODO(JRC): Improve this further by skipping over values likely to
+        # produce bad results (e.g. delay = 3 ms, fps = 33.33333 Hz).
+        gif_fps = 100.0 / round(100.0 / fps)
+
         # NOTE(JRC): The code below was adapted from the SO answer here:
         # https://askubuntu.com/a/648604/285545
         path_dir, path_base = os.path.dirname(path), os.path.basename(path)
@@ -41,9 +48,6 @@ def encode(path, out_encoding, fps=60.0, quality=0):
             '.{0}.png'.format(os.path.splitext(path_base)[0]))
 
         os.rename(path, temp_path)
-
-        # TODO: Restrict GIF based on support FPS.
-        gif_fps = 50
 
         # NOTE(JRC): The code below was adapted from the tutorial here:
         # http://blog.pkh.me/p/21-high-quality-gif-with-ffmpeg.html
