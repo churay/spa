@@ -36,6 +36,7 @@ def encode(path, out_encoding, fps=60.0, quality=0):
         # NOTE(JRC): GIFs only support FPS specified in terms of delay in
         # an integer number of milliseconds between frames, so we must convert
         # the given arbitrary FPS value to a valid, GIF-compliant FPS value.
+        # See this SO answer for details: https://askubuntu.com/a/648604/285545
         # TODO(JRC): Improve this further by skipping over values likely to
         # produce bad results (e.g. delay = 3 ms, fps = 33.33333 Hz).
         gif_fps = 100.0 / round(100.0 / fps)

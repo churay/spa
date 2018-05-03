@@ -43,6 +43,11 @@ class movie(object):
                 spa.touch(data_path, is_dir=True, force=True)):
             return False
 
+        # NOTE(JRC): For the sake of robustness, a movie is simply rendered
+        # as a single frame sequence of the canvas if no sequences are given.
+        if not self._sequences:
+            self.add_sequence(lambda pf, **k: [self._canvas.copy()], 0.1)
+
         # NOTE(JRC): Processing one sequence type per loop allows the sequences
         # to be processed before the transitions.
         ll.log('Generating Sequences', 1)
