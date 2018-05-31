@@ -102,3 +102,12 @@ class vector(object):
             math.cos(radians) * self._dvals[0] - math.sin(radians) * self._dvals[1],
             math.sin(radians) * self._dvals[0] + math.cos(radians) * self._dvals[1]]
         return self
+
+    def angleto(self, other):
+        assert self.dim == 2, 'Cannot angleto a non-2D vector yet.'
+        # TODO(JRC): Figure out how this works to give properly oriented
+        # angles between two vectors (normal method using dot products gives
+        # shortest angle, which is undesirable for our use cases).
+        tany = self._dvals[0] * other._dvals[1] - self._dvals[1] * other._dvals[0]
+        tanx = self % other
+        return math.degrees(math.atan2(tany, tanx))
