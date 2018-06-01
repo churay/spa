@@ -233,12 +233,12 @@ def orient_cell_strokes(image, orient_image, strokes):
     # pixels are used in the given 'orient_image'.
 
     for stroke, orient_pixel in zip(strokes, stroke_orient_pixels):
-        oriented_stroke = []
-        if not orient_pixel:
-            oriented_stroke = stroke
-        else:
+        oriented_stroke = stroke
+        if orient_pixel:
             orient_index = stroke.index(orient_pixel)
-            oriented_stroke = stroke[orient_index:] + stroke[:orient_index]
+            for shift_index, shift_value in \
+                    enumerate(stroke[orient_index:] + stroke[:orient_index]):
+                oriented_stroke[shift_index] = shift_value
 
             orient_alpha = orient_image.getpixel(to_2d(orient_pixel, orient_image))[3]
             want_orient = spa.orient.cw if orient_alpha == 255 else spa.orient.ccw

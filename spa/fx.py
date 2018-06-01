@@ -9,15 +9,16 @@ from PIL import Image
 
 def sstroke(canvas_image, cell_image,
         stroke_image=None,
-        stencil_image=None,
-        stencil_rate=1,            # units: pixels / stencil imprint
         stroke_offset=vector(2, spa.align.mid),
-        stroke_color=None,
+        stencil=None,
+        stencil_rate=1,            # units: pixels / stencil imprint
         **kwargs):
-    # TODO(JRC): Stroke serial will have the behavior of ensuring that all
-    # grouped strokes returned by the 'calc_cell_strokes' function are
-    # processed in sequence.
-    stencil_image = stencil_image or PIL.Image.new('RGBA', (1, 1), color=stroke_color)
+    # NOTE(JRC): Any pixel in the stencil with the color magenta will inherit
+    # the color from the source 'cell_image' during the embedding process.
+    stencil_color = stencil if isinstance(stencil, tuple) else spa.color('magenta')
+    stencil_image = stencil if isinstance(stencil, Image.Image) else \
+        Image.new('RGBA', (1, 1), color=stencil_color)
+
     stroke_offset = imp.calc_alignment(stroke_offset, canvas_image, cell_image)
     to_canvas = lambda sp: imp.to_pixel(sp + stroke_offset)
     get_pixel = lambda sp: cell_image.getpixel(imp.to_pixel(sp))[:3]
@@ -39,9 +40,6 @@ def sstroke(canvas_image, cell_image,
     else:
         ordered_strokes = [strokes]
 
-    # TODO(JRC): Figure out how to keep total tally of the number of pixels filled
-    # out for each stroke.
-
     frame_images = [canvas_image.copy()]
     for curr_strokes in ordered_strokes:
         num_frames = max(len(sl) for sl in curr_strokes)
@@ -49,30 +47,6 @@ def sstroke(canvas_image, cell_image,
         for frame_index in range(num_frames):
             frame_image = frame_images[-1].copy()
             for stroke, stroke_fill in zip(curr_strokes, stroke_fills):
-                '''
-                stroke_cell = stroke_cells[stroke_to_cell[id(stroke)]]
-                for stroke_index in stroke_fill[frame_index]:
-                    # first, check that the index is on the stencil rate;
-                    #   if it isn't, then we pass on stroking at the current point
-                    pixel_vec = imp.to_2d(stroke[stroke_index], cell_image, True)
-                    # pixel_vec is xform from cell_image space to center of stencil
-                    # 
-
-                    # create a copy of the stencil
-                    # rotate the stencil so that its tangent normal is the same as
-                    #   the cell at this position
-                    # set image alpha of stencil to be cell alpha and 0 elsewhere
-                    #   set the color of the stencil as well; if a color was given,
-                    #   use that; otherwise, use the background color
-                    # now that the stencil has been rotated and alpha'd, it needs
-                    #   to be put in the correct place for pasting; this place is
-                    #   to_canvas(pixel_vec + stencil_offset)
-                    # 
-                    # need to apply stencil offset to get to stencil space
-
-                    # particle_image = stencil_image.rotate(particle[1], resample=Image.BILINEAR)
-                    # frame_image.paste(particle_image, to_canvas(particle[0]), particle_image)
-                '''
                 stroke_cell = stroke_cells[stroke_to_cell[id(stroke)]]
                 for stroke_index in stroke_fill[frame_index]:
                     # NOTE(JRC): This has the potential to create weird artifacting
@@ -86,32 +60,37 @@ def sstroke(canvas_image, cell_image,
                         resample=Image.BILINEAR)
 
                     pixel_stencil_offset = pixel_offset - \
-                        spa.calc_alignment(vector(2, spa.alignment.mid), pixel_stencil_image)
+                        imp.calc_alignment(vector(2, spa.align.mid), pixel_stencil_image)
                     cell_stencil_image = cell_image.crop((
                         pixel_stencil_offset[0], pixel_stencil_offset[1],
                         pixel_stencil_image.width, pixel_stencil_image.height))
 
-                    # TODO(JRC): Expand this so that:
-                    # - the stencil is given the colors of the original image
-                    #   if that's what the user requested (or uses static color)
-                    # - the stencil respects alpha only if no color is given
-                    #   to prevent light outlines
-                    cell_alpha_data = cell_stencil_image.getdata(band=3)
-                    pixel_alpha_image = Image.new('L', cell_stencil_image.size)
-                    pixel_alpha_data = []
-                    for cell_index, cell_alpha in enumerate(cell_alpha_data):
+                    # NOTE(JRC): This code enforces stencil color/alpha rules:
+                    # - If the stencil has color magenta at a pixel, then it
+                    #   inherits the color from the cell image. Otherwise, it
+                    #   uses its own color.
+                    # - If the pixel is outside the current cell being colored,
+                    #   then it is automatically zeroed out (prevents artifacts).
+                    cell_color_data = cell_stencil_image.getdata()
+                    pixel_stencil_data = []
+                    for cell_index, cell_color in enumerate(cell_color_data):
                         index_stencil_offset = imp.to2d(cell_index,
                             cell_stencil_image, True)
                         index_pixel = index_stencil_offset - pixel_stencil_offset
+                        stencil_rgb = pixel_stencil_image.getpixel(index_pixel)[:3]
                         index_pixel = imp.to_1d(index_pixel[0], index_pixel[1],
                             cell_stencil_image, False)
-                        index_data = cell_alpha if index_pixel in stroke_cell else 0
-                        pixel_alpha_data.append(index_data)
-                    pixel_alpha_image.putdata(pixel_alpha_data)
-                    pixel_stencil_image.putalpha(pixel_alpha_image)
 
-                    pixel_color = stroke_color or get_pixel(pixel_vec)
-                    frame_image.putpixel(to_canvas(pixel_vec), pixel_color)
+                        cell_rgb, cell_alpha = cell_color[:3], cell_color[3]
+                        index_rgb = cell_rgb if stencil_rgb == spa.color('magenta') \
+                            else stencil_rgb
+                        index_alpha = cell_alpha if index_pixel in stroke_cell \
+                            else 0
+
+                        pixel_stencil_data.append(tuple(index_rgb + [index_alpha]))
+                    pixel_stencil_image.putdata(pixel_stencil_data)
+
+                    frame_image.paste(pixel_stencil_image, box=(pixel_stencil_offset[0], pixel_stencil_offset[1]))
             frame_images.append(frame_image)
 
     return frame_images
