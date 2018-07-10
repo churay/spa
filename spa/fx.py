@@ -74,23 +74,26 @@ def sstroke(canvas_image, cell_image,
                     cell_color_data = cell_stencil_image.getdata()
                     pixel_stencil_data = []
                     for cell_index, cell_color in enumerate(cell_color_data):
-                        index_stencil_offset = imp.to2d(cell_index,
-                            cell_stencil_image, True)
-                        index_pixel = index_stencil_offset - pixel_stencil_offset
-                        stencil_rgb = pixel_stencil_image.getpixel(index_pixel)[:3]
-                        index_pixel = imp.to_1d(index_pixel[0], index_pixel[1],
-                            cell_stencil_image, False)
+                        index_local_offset = imp.to_2d(cell_index, cell_stencil_image, True)
+                        index_local_pixel = imp.to_pixel(index_local_offset)
+                        index_global_offset = pixel_stencil_offset + index_local_offset
+                        index_global_pixel = imp.to_pixel(index_global_offset)
+                        index_global_1d = imp.to_1d(
+                            index_global_pixel[0], index_global_pixel[1], cell_image)
 
+                        stencil_rgb = pixel_stencil_image.getpixel(index_local_pixel)[:3]
                         cell_rgb, cell_alpha = cell_color[:3], cell_color[3]
-                        index_rgb = cell_rgb if stencil_rgb == spa.color('magenta') \
+
+                        # TODO(JRC): There's something wrong with the coloring here.
+                        index_rgb = cell_rgb if stencil_rgb == spa.color('magenta')[:3] \
                             else stencil_rgb
-                        index_alpha = cell_alpha if index_pixel in stroke_cell \
+                        index_alpha = cell_alpha if index_global_1d in stroke_cell \
                             else 0
 
-                        pixel_stencil_data.append(tuple(index_rgb + [index_alpha]))
+                        pixel_stencil_data.append(tuple(list(index_rgb) + [index_alpha]))
                     pixel_stencil_image.putdata(pixel_stencil_data)
 
-                    frame_image.paste(pixel_stencil_image, box=(pixel_stencil_offset[0], pixel_stencil_offset[1]))
+                    frame_image.paste(pixel_stencil_image, box=imp.to_pixel(pixel_stencil_offset))
             frame_images.append(frame_image)
 
     return frame_images
