@@ -55,15 +55,18 @@ def sstroke(canvas_image, cell_image,
                     pixel_offset = imp.to_2d(stroke[stroke_index], cell_image, True)
                     pixel_tangent = imp.calc_tangent(stroke, stroke_index, cell_image)
 
+                    # TODO(JRC): This REALLY needs to be refactored into
+                    # something more readable.
                     pixel_stencil_image = stencil_image.rotate(
                         vector(2, 1.0, 0.0).angleto(pixel_tangent),
-                        resample=Image.BILINEAR)
+                        resample=Image.BILINEAR, expand=True)
 
                     pixel_stencil_offset = pixel_offset - \
                         imp.calc_alignment(vector(2, spa.align.mid), pixel_stencil_image)
                     cell_stencil_image = cell_image.crop((
                         pixel_stencil_offset[0], pixel_stencil_offset[1],
-                        pixel_stencil_image.width, pixel_stencil_image.height))
+                        pixel_stencil_offset[0] + pixel_stencil_image.width,
+                        pixel_stencil_offset[1] + pixel_stencil_image.height))
 
                     # NOTE(JRC): This code enforces stencil color/alpha rules:
                     # - If the stencil has color magenta at a pixel, then it
@@ -73,7 +76,7 @@ def sstroke(canvas_image, cell_image,
                     #   then it is automatically zeroed out (prevents artifacts).
                     cell_color_data = cell_stencil_image.getdata()
                     pixel_stencil_data = []
-                    for cell_index, cell_color in enumerate(cell_color_data):
+                    for cell_index, cell_rgba in enumerate(cell_color_data):
                         index_local_offset = imp.to_2d(cell_index, cell_stencil_image, True)
                         index_local_pixel = imp.to_pixel(index_local_offset)
                         index_global_offset = pixel_stencil_offset + index_local_offset
@@ -81,19 +84,18 @@ def sstroke(canvas_image, cell_image,
                         index_global_1d = imp.to_1d(
                             index_global_pixel[0], index_global_pixel[1], cell_image)
 
-                        stencil_rgb = pixel_stencil_image.getpixel(index_local_pixel)[:3]
-                        cell_rgb, cell_alpha = cell_color[:3], cell_color[3]
+                        stencil_rgba = pixel_stencil_image.getpixel(index_local_pixel)
 
                         # TODO(JRC): There's something wrong with the coloring here.
-                        index_rgb = cell_rgb if stencil_rgb == spa.color('magenta')[:3] \
-                            else stencil_rgb
-                        index_alpha = cell_alpha if index_global_1d in stroke_cell \
-                            else 0
+                        index_rgb = cell_rgba[:3] if stencil_rgba[:3] == spa.color('magenta')[:3] \
+                            else stencil_rgba[:3]
+                        index_alpha = int(round(255.0*(cell_rgba[3]/255.0)*(stencil_rgba[3]/255.0))) \
+                            if index_global_1d in stroke_cell else 0
 
                         pixel_stencil_data.append(tuple(list(index_rgb) + [index_alpha]))
                     pixel_stencil_image.putdata(pixel_stencil_data)
 
-                    frame_image.paste(pixel_stencil_image, box=imp.to_pixel(pixel_stencil_offset))
+                    frame_image.alpha_composite(pixel_stencil_image, dest=imp.to_pixel(pixel_stencil_offset))
             frame_images.append(frame_image)
 
     return frame_images
