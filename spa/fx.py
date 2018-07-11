@@ -85,8 +85,6 @@ def sstroke(canvas_image, cell_image,
                             index_global_pixel[0], index_global_pixel[1], cell_image)
 
                         stencil_rgba = pixel_stencil_image.getpixel(index_local_pixel)
-
-                        # TODO(JRC): There's something wrong with the coloring here.
                         index_rgb = cell_rgba[:3] if stencil_rgba[:3] == spa.color('magenta')[:3] \
                             else stencil_rgba[:3]
                         index_alpha = int(round(255.0*(cell_rgba[3]/255.0)*(stencil_rgba[3]/255.0))) \

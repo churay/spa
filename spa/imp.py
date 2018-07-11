@@ -80,9 +80,8 @@ def calc_orientation(boundary, image):
 # technique based on point fitting.
 def calc_tangent(boundary, index, image):
     tangent_samples = [
-        to_2d(boundary[(index-i)], image, True) -
-        to_2d(boundary[(index+i)%len(boundary)], image, True)
-        for i in range(1, 5)]
+        to_2d(boundary[(index+i)%len(boundary)], image, True) - \
+        to_2d(boundary[(index-i)], image, True) for i in range(1, 5)]
 
     tangent_average = sum(tangent_samples, vector(2, 0.0)) / len(tangent_samples)
     tangent_average.inormal()
