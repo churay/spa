@@ -90,7 +90,8 @@ def sstroke(canvas_image, cell_image,
                         pixel_stencil_data.append(index_rgb + (index_a,))
                     pixel_stencil_image.putdata(pixel_stencil_data)
 
-                    frame_image.alpha_composite(pixel_stencil_image, dest=imp.to_pixel(pixel_stencil_offset))
+                    frame_image.alpha_composite(pixel_stencil_image,
+                        dest=imp.to_pixel(pixel_stencil_offset))
             frame_images.append(frame_image)
 
     return frame_images

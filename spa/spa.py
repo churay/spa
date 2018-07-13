@@ -149,8 +149,8 @@ class color(tuple):
 
     def composite(self, other):
         other = other if isinstance(other, color) else colorize(other)
-        return color(*tuple(int(round(255.0*(sc/255.0)*(oc/255.0)))
-            for sc, oc in zip(self, other)))
+        return color(*[int(round(255.0*(sc/255.0)*(oc/255.0)))
+            for sc, oc in zip(self, other)])
 
     @property
     def r(self):
