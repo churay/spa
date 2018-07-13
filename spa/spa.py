@@ -37,9 +37,9 @@ imtype = type('Enum', (), {e: i for i, e in
 def clamp(value, min_value, max_value):
     return max(min(value, max_value), min_value)
 
-def color(name, alpha=255):
+def colorize(name, alpha=255):
     color_tuple = colors.get(name, 'black')
-    return (color_tuple[0], color_tuple[1], color_tuple[2], alpha)
+    return color(color_tuple[0], color_tuple[1], color_tuple[2], alpha)
 
 def distribute(num_items, num_buckets, bucket_limit=float('inf'), is_cyclic=False):
     # TODO(JRC): Add better support to allow overfilling to the front if the
@@ -138,6 +138,39 @@ def cache(cache_id):
     return cache_decorator
 
 ### Module Classes ###
+
+class color(tuple):
+    def __new__(self, r, g, b, a=255):
+        return tuple.__new__(color, (r, g, b, a))
+
+    def matches(self, other):
+        other = other if isinstance(other, color) else colorize(other)
+        return self.rgb == other.rgb
+
+    def composite(self, other):
+        other = other if isinstance(other, color) else colorize(other)
+        return color(*tuple(int(round(255.0*(sc/255.0)*(oc/255.0)))
+            for sc, oc in zip(self, other)))
+
+    @property
+    def r(self):
+        return self[0]
+    @property
+    def g(self):
+        return self[1]
+    @property
+    def b(self):
+        return self[2]
+    @property
+    def a(self):
+        return self[3]
+
+    @property
+    def rgb(self):
+        return self[:3]
+    @property
+    def rgba(self):
+        return self[:4]
 
 class level_logger(object):
     def __init__(self, context):

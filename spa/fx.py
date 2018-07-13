@@ -15,7 +15,7 @@ def sstroke(canvas_image, cell_image,
         **kwargs):
     # NOTE(JRC): Any pixel in the stencil with the color magenta will inherit
     # the color from the source 'cell_image' during the embedding process.
-    stencil_color = stencil if isinstance(stencil, tuple) else spa.color('magenta')
+    stencil_color = stencil if isinstance(stencil, tuple) else spa.colorize('magenta')
     stencil_image = stencil if isinstance(stencil, Image.Image) else \
         Image.new('RGBA', (1, 1), color=stencil_color)
 
@@ -55,18 +55,14 @@ def sstroke(canvas_image, cell_image,
                     pixel_offset = imp.to_2d(stroke[stroke_index], cell_image, True)
                     pixel_tangent = imp.calc_tangent(stroke, stroke_index, cell_image)
 
-                    # TODO(JRC): This REALLY needs to be refactored into
-                    # something more readable.
                     pixel_stencil_image = stencil_image.rotate(
                         vector(2, 1.0, 0.0).angleto(pixel_tangent),
                         resample=Image.BILINEAR, expand=True)
 
                     pixel_stencil_offset = pixel_offset - \
                         imp.calc_alignment(vector(2, spa.align.mid), pixel_stencil_image)
-                    cell_stencil_image = cell_image.crop((
-                        pixel_stencil_offset[0], pixel_stencil_offset[1],
-                        pixel_stencil_offset[0] + pixel_stencil_image.width,
-                        pixel_stencil_offset[1] + pixel_stencil_image.height))
+                    cell_stencil_image = cell_image.crop(pixel_stencil_offset.dvals + \
+                        (pixel_stencil_offset + vector(2, *pixel_stencil_image.size)).dvals)
 
                     # NOTE(JRC): This code enforces stencil color/alpha rules:
                     # - If the stencil has color magenta at a pixel, then it
@@ -81,16 +77,17 @@ def sstroke(canvas_image, cell_image,
                         index_local_pixel = imp.to_pixel(index_local_offset)
                         index_global_offset = pixel_stencil_offset + index_local_offset
                         index_global_pixel = imp.to_pixel(index_global_offset)
-                        index_global_1d = imp.to_1d(
-                            index_global_pixel[0], index_global_pixel[1], cell_image)
+                        index_global_1d = imp.to_1d(index_global_pixel, cell_image)
 
                         stencil_rgba = pixel_stencil_image.getpixel(index_local_pixel)
-                        index_rgb = cell_rgba[:3] if stencil_rgba[:3] == spa.color('magenta')[:3] \
-                            else stencil_rgba[:3]
-                        index_alpha = int(round(255.0*(cell_rgba[3]/255.0)*(stencil_rgba[3]/255.0))) \
+                        cell_color, stencil_color = spa.color(*cell_rgba), spa.color(*stencil_rgba)
+
+                        index_rgb = cell_color.rgb \
+                            if stencil_color.matches('magenta') else stencil_color.rgb
+                        index_a = cell_color.composite(stencil_color).a \
                             if index_global_1d in stroke_cell else 0
 
-                        pixel_stencil_data.append(tuple(list(index_rgb) + [index_alpha]))
+                        pixel_stencil_data.append(index_rgb + (index_a,))
                     pixel_stencil_image.putdata(pixel_stencil_data)
 
                     frame_image.alpha_composite(pixel_stencil_image, dest=imp.to_pixel(pixel_stencil_offset))
@@ -100,7 +97,7 @@ def sstroke(canvas_image, cell_image,
 
 def scale(scale_image, scale_func,
         scale_origin=vector(2, spa.align.mid),
-        fill_color=spa.color('white'),
+        fill_color=spa.colorize('white'),
         **kwargs):
     ffx = _get_fxdata(**kwargs)
 
@@ -252,7 +249,7 @@ def fade(in_image, out_image,
 
     return frame_images
 
-def still(in_image, still_color=spa.color('white'), **kwargs):
+def still(in_image, still_color=spa.colorize('white'), **kwargs):
     if not still_color:
         return [in_image.copy()]
     else:

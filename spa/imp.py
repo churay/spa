@@ -21,12 +21,23 @@ def distrib_colors(count):
 
 ## Math Functions ##
 
-def to_1d(pixel_x, pixel_y, image, as_vector=False):
-    pixel_1d = pixel_x + pixel_y * image.width
+def to_1d(*args, **kwargs):
+    is_tuple_call = isinstance(args[0], tuple)
+    pixel = args[0] if is_tuple_call else tuple(args[0:2])
+    image = args[1] if is_tuple_call else args[2]
+    as_vector = args[3 - int(is_tuple_call)] if len(args) > 3 - int(is_tuple_call) \
+        else kwargs.get('as_vector', False)
+
+    pixel_1d = pixel[0] + pixel[1] * image.width
     return vector(1, pixel_1d) if as_vector else pixel_1d
 
-def to_2d(pixel_i, image, as_vector=False):
-    pixel_2d = (int(pixel_i % image.width), int(pixel_i / image.width))
+def to_2d(*args, **kwargs):
+    pixel = args[0]
+    image = args[1]
+    as_vector = args[2] if len(args) > 2 \
+        else kwargs.get('as_vector', False)
+
+    pixel_2d = (int(pixel % image.width), int(pixel / image.width))
     return vector(2, *pixel_2d) if as_vector else pixel_2d
 
 def to_pixel(vector):
