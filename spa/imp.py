@@ -271,9 +271,17 @@ def order_cell_strokes(image, orient_image, strokes):
     # pixels are used in the given 'orient_image'.
 
     orient_color_to_strokes = collections.defaultdict(list)
+    orient_extra_strokes = []
     for stroke, orient_pixel in zip(strokes, stroke_orient_pixels):
-        orient_color = orient_image.getpixel(to_2d(orient_pixel, orient_image))[:3]
-        orient_color_to_strokes[orient_color].append(stroke)
+        if orient_pixel:
+            orient_color = orient_image.getpixel(to_2d(orient_pixel, orient_image))[:3]
+            orient_color_to_strokes[orient_color].append(stroke)
+        else:
+            orient_extra_strokes.append(stroke)
+
+    # TODO(JRC): Improve this behavior if default binning missing strokes
+    # becomes important in the future.
+    orient_color_to_strokes[orient_color_to_strokes.keys()[0]].extend(orient_extra_strokes)
 
     ordered_strokes = [orient_color_to_strokes[c] for c in
         sorted(orient_color_to_strokes.keys(),

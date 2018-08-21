@@ -21,7 +21,6 @@ def sstroke(canvas_image, cell_image,
 
     stroke_offset = imp.calc_alignment(stroke_offset, canvas_image, cell_image)
     to_canvas = lambda sp: imp.to_pixel(sp + stroke_offset)
-    get_pixel = lambda sp: cell_image.getpixel(imp.to_pixel(sp))[:3]
 
     stroke_cells = imp.calc_opaque_cells(cell_image)
     stroke_bounds = imp.calc_cell_boundaries(cell_image, stroke_cells)
@@ -91,7 +90,7 @@ def sstroke(canvas_image, cell_image,
                     pixel_stencil_image.putdata(pixel_stencil_data)
 
                     frame_image.alpha_composite(pixel_stencil_image,
-                        dest=imp.to_pixel(pixel_stencil_offset))
+                        dest=to_canvas(pixel_stencil_offset))
             frame_images.append(frame_image)
 
     return frame_images
