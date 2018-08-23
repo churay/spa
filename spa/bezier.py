@@ -9,14 +9,13 @@ class bezier(object):
     ### Constructors ###
 
     def __init__(self, *args):
-        assert len(args) % 2 == 0, \
-            'Improperly defined Bezier curve.'
-        assert all(ap < an for ap, an in zip(args[:-2:2], args[2::2])), \
-            'Improperly defined Bezier curve.'
+        err = 'Improperly defined Bezier curve.'
+        assert len(args) % 2 == 0, err
+        assert all(0.0 <= cx <= 1.0 for cx in args[::2]), err
 
         self._cpoints = [0.0, 0.0] + list(args) + [1.0, 1.0]
         self._cpoints = [vector.vector(2, cx, cy) for cx, cy 
-            in zip(self._cpoints[:-1:2], self._cpoints[1::2])]
+            in zip(self._cpoints[::2], self._cpoints[1::2])]
         self._degree = len(self._cpoints) - 1
 
     ### Properties ###
