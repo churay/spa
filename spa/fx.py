@@ -130,7 +130,7 @@ def pop(canvas_image, pop_image,
     ffx = _get_fxdata(**kwargs)
 
     pop_offset = imp.calc_alignment(pop_offset, canvas_image, pop_image)
-    pop_stencil = pop_stencil or spa.read_image('default.png', spa.imtype.stencil)
+    pop_stencil = pop_stencil or spa.load('default.png', spa.imtype.stencil)
     pop_rng = random.seed(pop_seed)
 
     pop_cells = imp.calc_opaque_cells(pop_image)
@@ -141,11 +141,11 @@ def pop(canvas_image, pop_image,
     # Scale Parameters to Fit Image #
 
     scale_baseline = min(*pop_image.size)
+    if pop_scale is not None:
+        stencil_scale = vector(2, pop_scale * scale_baseline)
+        pop_stencil = pop_stencil.resize(imp.to_pixel(stencil_scale), resample=Image.LANCZOS)
 
-    stencil_scale = vector(2, pop_scale * scale_baseline)
-    pop_stencil = pop_stencil.resize(imp.to_pixel(stencil_scale), resample=Image.LANCZOS)
     stencil_offset = imp.calc_alignment(vector(2, spa.align.mid), pop_stencil)
-
     pop_velocity *= scale_baseline
 
     # Generate Contour Particles #
@@ -153,7 +153,7 @@ def pop(canvas_image, pop_image,
     pop_particles = []
     for contour in pop_contours:
         contour_orient = imp.calc_orientation(contour, pop_image)
-        contour_dir = 1 if contour_orient == spa.orient.ccw else -1
+        contour_dir = -1 if contour_orient == spa.orient.ccw else 1
         contour_distrib = spa.distribute(
             int(pop_rate), len(contour), bucket_limit=1, is_cyclic=True)
 
